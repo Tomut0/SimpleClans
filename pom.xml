@@ -88,6 +88,10 @@
                             <pattern>org.reflections</pattern>
                             <shadedPattern>net.sacredlabyrinth.phaed.simpleclans.reflections</shadedPattern>
                         </relocation>
+                        <relocation>
+                            <pattern>net.wesjd</pattern>
+                            <shadedPattern>net.sacredlabyrinth.phaed.simpleclans.net.anvilgui</shadedPattern>
+                        </relocation>
                     </relocations>
                     <artifactSet>
                         <excludes>
@@ -108,6 +112,12 @@
     </build>
     <!-- Dependencies -->
     <dependencies>
+        <dependency>
+            <groupId>net.wesjd</groupId>
+            <artifactId>anvilgui</artifactId>
+            <version>1.5.0-SNAPSHOT</version>
+            <scope>compile</scope>
+        </dependency>
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>

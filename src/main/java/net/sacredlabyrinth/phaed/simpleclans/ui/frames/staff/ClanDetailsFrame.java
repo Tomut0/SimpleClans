@@ -111,9 +111,12 @@ public class ClanDetailsFrame extends SCFrame {
     }
 
     private void addBank() {
-        List<String> lore = Collections.singletonList(lang("gui.clandetails.bank.balance.lore", getViewer(), clan.getBalance()));
+        List<String> lore = new ArrayList<>();
+        lore.add(lang("gui.clandetails.bank.balance.lore", getViewer(), clan.getBalance()));
+        lore.add(lang("gui.staff.clan.bank.set", getViewer()));
 
         SCComponent bank = new SCComponentImpl(lang("gui.clandetails.bank.title", getViewer()), lore, XMaterial.GOLD_INGOT, 40);
+        bank.setListener(ClickType.LEFT, () -> InventoryDrawer.open(new ClanBankSetFrame(this, getViewer(), clan)));
         add(bank);
     }
 

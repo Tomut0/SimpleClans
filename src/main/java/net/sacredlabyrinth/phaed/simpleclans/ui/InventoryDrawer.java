@@ -38,7 +38,6 @@ public class InventoryDrawer {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
 
             Inventory inventory = prepareInventory(frame);
-
             if (!frame.equals(OPENING.get(uuid))) {
                 return;
             }
@@ -48,15 +47,23 @@ public class InventoryDrawer {
                 if (event.isCancelled()) {
                     return;
                 }
-                frame.getViewer().openInventory(inventory);
-                InventoryController.register(frame);
+
+                if (frame instanceof SCAnvilFrame && inventory == null) {
+                    ((SCAnvilFrame) frame).getAnvilGUI().open(frame.getViewer());
+                } else {
+                    frame.getViewer().openInventory(inventory);
+                    InventoryController.register(frame);
+                }
                 OPENING.remove(uuid);
             });
         });
     }
 
-    @NotNull
     private static Inventory prepareInventory(@NotNull SCFrame frame) {
+        if (frame instanceof SCAnvilFrame) {
+            return null;
+        }
+
         Inventory inventory = Bukkit.createInventory(frame.getViewer(), frame.getSize(), frame.getTitle());
         long start = System.currentTimeMillis();
         setComponents(inventory, frame);
@@ -70,7 +77,6 @@ public class InventoryDrawer {
     }
 
     /**
-     *
      * @deprecated use {@link InventoryDrawer#open(SCFrame)}
      */
     @Deprecated
@@ -148,10 +154,10 @@ public class InventoryDrawer {
     }
 
     private static boolean hasPermission(@NotNull Player viewer, @NotNull Object permission) {
-    	if (permission instanceof String) {
-    		return plugin.getPermissionsManager().has(viewer, (String) permission);
-		}
-    	return plugin.getPermissionsManager().has(viewer, (RankPermission) permission, false);
-	}
+        if (permission instanceof String) {
+            return plugin.getPermissionsManager().has(viewer, (String) permission);
+        }
+        return plugin.getPermissionsManager().has(viewer, (RankPermission) permission, false);
+    }
 
 }
