@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * @author RoinujNosde
  */
-public abstract class SCFrame {
+public abstract class SCFrame implements IFrame {
 
     private final SCFrame parent;
     private final Player viewer;
@@ -34,13 +34,9 @@ public abstract class SCFrame {
         return parent;
     }
 
-    public int getSize() {
-        return 0;
-    }
+    public abstract int getSize();
 
-    public void createComponents() {
-
-    }
+    public abstract void createComponents();
 
     @Nullable
     public SCComponent getComponent(int slot) {

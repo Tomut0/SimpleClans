@@ -20,12 +20,12 @@ import static net.sacredlabyrinth.phaed.simpleclans.SimpleClans.lang;
 
 public class InventoryDrawer {
     private static final SimpleClans plugin = SimpleClans.getInstance();
-    private static final ConcurrentHashMap<UUID, SCFrame> OPENING = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<UUID, IFrame> OPENING = new ConcurrentHashMap<>();
 
     private InventoryDrawer() {
     }
 
-    public static void open(@Nullable SCFrame frame) {
+    public static void open(@Nullable IFrame frame) {
         if (frame == null) {
             return;
         }
@@ -35,35 +35,39 @@ public class InventoryDrawer {
         }
 
         OPENING.put(uuid, frame);
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
 
-            Inventory inventory = prepareInventory(frame);
-            if (!frame.equals(OPENING.get(uuid))) {
+        /* Do we really need this method
+            if `OPENING.put(uuid, frame);` throws an exceptions?
+        */
+        if (!frame.equals(OPENING.get(uuid))) {
+            return;
+        }
+
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            if (frame instanceof SCFrame) {
+                Inventory inventory = prepareInventory((SCFrame) frame);
+                syncTask(frame, uuid, () -> frame.getViewer().openInventory(inventory));
+            } else {
+                syncTask(frame, uuid, () -> ((SCAnvilFrame) frame).getAnvilGUI().open(frame.getViewer()));
+            }
+        });
+    }
+
+    private static void syncTask(@NotNull IFrame frame, UUID uuid, Runnable openMethod) {
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            FrameOpenEvent event = new FrameOpenEvent(frame.getViewer(), frame);
+            Bukkit.getPluginManager().callEvent(event);
+            if (event.isCancelled()) {
                 return;
             }
-            Bukkit.getScheduler().runTask(plugin, () -> {
-                FrameOpenEvent event = new FrameOpenEvent(frame.getViewer(), frame);
-                Bukkit.getPluginManager().callEvent(event);
-                if (event.isCancelled()) {
-                    return;
-                }
 
-                if (frame instanceof SCAnvilFrame && inventory == null) {
-                    ((SCAnvilFrame) frame).getAnvilGUI().open(frame.getViewer());
-                } else {
-                    frame.getViewer().openInventory(inventory);
-                    InventoryController.register(frame);
-                }
-                OPENING.remove(uuid);
-            });
+            openMethod.run();
+            InventoryController.register(frame);
+            OPENING.remove(uuid);
         });
     }
 
     private static Inventory prepareInventory(@NotNull SCFrame frame) {
-        if (frame instanceof SCAnvilFrame) {
-            return null;
-        }
-
         Inventory inventory = Bukkit.createInventory(frame.getViewer(), frame.getSize(), frame.getTitle());
         long start = System.currentTimeMillis();
         setComponents(inventory, frame);
@@ -77,7 +81,7 @@ public class InventoryDrawer {
     }
 
     /**
-     * @deprecated use {@link InventoryDrawer#open(SCFrame)}
+     * @deprecated use {@link InventoryDrawer#open(IFrame)}
      */
     @Deprecated
     public static void update(@NotNull SCFrame frame) {
