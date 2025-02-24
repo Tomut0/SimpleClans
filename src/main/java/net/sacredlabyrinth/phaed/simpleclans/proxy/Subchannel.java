@@ -1,7 +1,7 @@
 package net.sacredlabyrinth.phaed.simpleclans.proxy;
 
 public enum Subchannel {
-    UPDATE_CLAN_CHANNE("UpdateClan", false),
+    UPDATE_CLAN_CHANNEL("UpdateClan", false),
     UPDATE_CLANPLAYER_CHANNEL("UpdateClanPlayer", false),
     DELETE_CLAN_CHANNEL("DeleteClan", false),
     DELETE_CLANPLAYER_CHANNEL("DeleteClanPlayer", false),
