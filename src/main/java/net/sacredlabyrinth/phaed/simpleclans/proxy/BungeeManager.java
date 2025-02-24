@@ -40,7 +40,6 @@ public final class BungeeManager implements ProxyManager, PluginMessageListener 
     private final Gson gson;
     private final List<String> onlinePlayers = new ArrayList<>();
     private String serverName = "";
-    private final Set<String> unknownChannels = new HashSet<>();
 
     public BungeeManager(SimpleClans plugin) {
         this.plugin = plugin;
@@ -62,26 +61,31 @@ public final class BungeeManager implements ProxyManager, PluginMessageListener 
     public void onPluginMessageReceived(@NotNull String channel, @NotNull Player player, byte[] data) {
         ByteArrayDataInput input = ByteStreams.newDataInput(data);
         String subChannel = input.readUTF();
-        if (unknownChannels.contains(subChannel)) {
-            return;
-        }
+
         SimpleClans.debug("Message received, sub-channel: " + subChannel);
         try {
-            Class<?> clazz = Class.forName("net.sacredlabyrinth.phaed.simpleclans.proxy.listeners." + subChannel);
+            Subchannel subchannel = Subchannel.valueOf(subChannel);
+            Class<?> clazz = Class.forName("net.sacredlabyrinth.phaed.simpleclans.proxy.listeners." + subchannel.getClassName());
             MessageListener listener = (MessageListener) clazz.getConstructor(BungeeManager.class).newInstance(this);
-            String serverName = null;
-            if (!listener.isBungeeSubchannel()) {
-                serverName = input.readUTF();
+            if (subchannel.isBungeeChannel()) {
+                listener.accept(input);
+                SimpleClans.debug("Message processed");;
+                return;
             }
-            if (serverName != null && !isServerAllowed(serverName)) {
+
+            String receivedServerName = input.readUTF();
+            if (!isServerAllowed(receivedServerName)) {
                 SimpleClans.debug(String.format("Server not allowed: %s", serverName));
                 return;
             }
+
             listener.accept(input);
             SimpleClans.debug("Message processed");
-        } catch (ClassNotFoundException e) {
+        } catch (IllegalArgumentException ignored) {
+        } catch (IllegalStateException ex) {
+            plugin.getLogger().log(Level.WARNING,"Received server name is empty", ex);
+        } catch(ClassNotFoundException e) {
             SimpleClans.debug(String.format("Unknown channel: %s", subChannel));
-            unknownChannels.add(subChannel);
         } catch (ReflectiveOperationException ex) {
             plugin.getLogger().log(Level.SEVERE, String.format("Error processing channel %s", subChannel), ex);
         }
