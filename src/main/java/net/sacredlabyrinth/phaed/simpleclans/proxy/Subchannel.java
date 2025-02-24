@@ -22,8 +22,8 @@ public enum Subchannel {
     private final String className;
     private final boolean isBungeeChannel;
 
-    Subchannel(String displayName, boolean isBungeeChannel) {
-        this.className = displayName;
+    Subchannel(String className, boolean isBungeeChannel) {
+        this.className = className;
         this.isBungeeChannel = isBungeeChannel;
     }
 }

@@ -52,14 +52,14 @@ public final class BungeeManager implements ProxyManager, PluginMessageListener 
     @SuppressWarnings("UnstableApiUsage")
     public void onPluginMessageReceived(@NotNull String channel, @NotNull Player player, byte[] data) {
         ByteArrayDataInput input = ByteStreams.newDataInput(data);
-        String subChannel = input.readUTF();
+        String subChannelRaw = input.readUTF();
 
-        SimpleClans.debug("Message received, sub-channel: " + subChannel);
+        SimpleClans.debug("Message received, sub-channel: " + subChannelRaw);
         try {
-            Subchannel subchannel = Subchannel.valueOf(subChannel);
-            Class<?> clazz = Class.forName("net.sacredlabyrinth.phaed.simpleclans.proxy.listeners." + subchannel.getClassName());
+            Subchannel subChannel = Subchannel.valueOf(subChannelRaw);
+            Class<?> clazz = Class.forName("net.sacredlabyrinth.phaed.simpleclans.proxy.listeners." + subChannel.getClassName());
             MessageListener listener = (MessageListener) clazz.getConstructor(BungeeManager.class).newInstance(this);
-            if (subchannel.isBungeeChannel()) {
+            if (subChannel.isBungeeChannel()) {
                 listener.accept(input);
                 SimpleClans.debug("Message processed");
                 return;
@@ -77,19 +77,15 @@ public final class BungeeManager implements ProxyManager, PluginMessageListener 
         } catch (IllegalStateException ex) {
             plugin.getLogger().log(Level.WARNING,"Received server name is empty", ex);
         } catch(ClassNotFoundException e) {
-            SimpleClans.debug(String.format("Unknown channel: %s", subChannel));
+            SimpleClans.debug(String.format("Unknown channel: %s", subChannelRaw));
         } catch (ReflectiveOperationException ex) {
-            plugin.getLogger().log(Level.SEVERE, String.format("Error processing channel %s", subChannel), ex);
+            plugin.getLogger().log(Level.SEVERE, String.format("Error processing channel %s", subChannelRaw), ex);
         }
     }
 
     private boolean isServerAllowed(@NotNull String serverName) {
         List<String> servers = plugin.getSettingsManager().getStringList(ConfigField.BUNGEE_SERVERS);
-        if (servers.isEmpty()) {
-            return true;
-        }
-
-        return servers.contains(serverName);
+        return servers.isEmpty() || servers.contains(serverName);
     }
 
     @Override
