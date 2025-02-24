@@ -26,9 +26,4 @@ public class DeleteClan extends MessageListener {
         }
         debug(String.format("Deleted clan %s", tag));
     }
-
-    @Override
-    public boolean isBungeeSubchannel() {
-        return false;
-    }
 }

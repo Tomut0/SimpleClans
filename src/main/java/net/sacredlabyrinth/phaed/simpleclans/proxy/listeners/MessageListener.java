@@ -15,8 +15,6 @@ public abstract class MessageListener {
 
     public abstract void accept(ByteArrayDataInput data);
 
-    public abstract boolean isBungeeSubchannel();
-
     protected ClanManager getClanManager() {
         return bungee.getPlugin().getClanManager();
     }

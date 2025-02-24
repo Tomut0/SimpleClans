@@ -19,9 +19,4 @@ public class DeleteClanPlayer extends MessageListener {
         getClanManager().deleteClanPlayerFromMemory(uuid);
         debug(String.format("Deleted cp %s", uuid));
     }
-
-    @Override
-    public boolean isBungeeSubchannel() {
-        return false;
-    }
 }

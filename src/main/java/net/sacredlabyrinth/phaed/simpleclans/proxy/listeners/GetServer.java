@@ -14,9 +14,4 @@ public class GetServer extends MessageListener {
         String name = data.readUTF();
         bungee.setServerName(name);
     }
-
-    @Override
-    public boolean isBungeeSubchannel() {
-        return true;
-    }
 }

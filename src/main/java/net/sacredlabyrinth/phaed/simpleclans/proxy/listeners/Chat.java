@@ -18,9 +18,4 @@ public class Chat extends MessageListener {
         }
         bungee.getPlugin().getChatManager().processChat(message);
     }
-
-    @Override
-    public boolean isBungeeSubchannel() {
-        return false;
-    }
 }
