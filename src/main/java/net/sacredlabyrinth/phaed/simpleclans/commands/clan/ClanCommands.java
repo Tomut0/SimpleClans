@@ -387,4 +387,10 @@ public class ClanCommands extends BaseCommand {
     public void resign(@Conditions("clan_member") Player player) {
         new SCConversation(plugin, player, new ResignPrompt()).begin();
     }
+
+    @Subcommand("%chest")
+    public void chest(@Conditions("clan_member") Player player, Clan clan) {
+        var chest = SimpleClans.getInstance().getClanManager().getOrCreateClanChest(clan);
+        chest.open(player);
+    }
 }
