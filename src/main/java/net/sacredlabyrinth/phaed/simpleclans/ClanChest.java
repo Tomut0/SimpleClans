@@ -1,8 +1,6 @@
 package net.sacredlabyrinth.phaed.simpleclans;
 
-import com.cryptomorin.xseries.XMaterial;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -20,7 +18,7 @@ public class ClanChest implements Serializable {
     private transient Clan clan;
     private transient Inventory chest;
 
-    private HashMap<Integer, Map<String, Object>> content;
+    private final HashMap<Integer, Map<String, Object>> content;
 
     public ClanChest(@NotNull Clan clan) {
         this.clan = clan;
@@ -66,7 +64,7 @@ public class ClanChest implements Serializable {
             if (contents[i] != null) {
                 content.put(i, contents[i].serialize());
             } else {
-                content.put(i, new ItemStack(Material.AIR).serialize());
+                content.remove(i);
             }
         }
     }
@@ -74,7 +72,6 @@ public class ClanChest implements Serializable {
     public Inventory getInventory() {
         if (chest == null) {
             chest = Bukkit.createInventory(null, 27, clan.getColorTag() + " chest");
-            content = new HashMap<>();
             SimpleClans.getInstance().getStorageManager().insertClanChest(this);
             return chest;
         }
