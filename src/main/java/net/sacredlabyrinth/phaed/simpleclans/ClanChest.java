@@ -34,7 +34,7 @@ public class ClanChest implements Serializable, InventoryHolder {
         }
     }
 
-    public void save() {
+    public void sync() {
         ItemStack[] contents = getInventory().getContents();
 
         for (int i = 0; i < contents.length; i++) {

@@ -40,6 +40,7 @@ public final class StorageManager {
     private final HashMap<String, ChatBlock> chatBlocks = new HashMap<>();
     private final Set<Clan> modifiedClans = new HashSet<>();
     private final Set<ClanPlayer> modifiedClanPlayers = new HashSet<>();
+    private final Set<ClanChest> modifiedClanChests = new HashSet<>();
 
     /**
      *
@@ -957,27 +958,28 @@ public final class StorageManager {
             return;
         }
 
-        try {
-            byte[] serializedData = ClanChest.serialize(cc);
+        if (plugin.getSettingsManager().is(PERFORMANCE_SAVE_PERIODICALLY)) {
+            modifiedClanChests.add(cc);
+            return;
+        }
 
-            String query = "UPDATE `" + getPrefixedTable("chests") + "` SET `content` = ? WHERE `tag` = ?";
-
-            try (PreparedStatement ps = core.getConnection().prepareStatement(query)) {
-                ps.setBytes(1, serializedData);
-                ps.setString(2, cc.getClan().getTag());
-
-                ps.executeUpdate();
-            }
+        try (PreparedStatement ps = prepareUpdateClanChestStatement(core.getConnection())) {
+            setValues(ps, cc);
+            ps.executeUpdate();
         } catch (IOException | SQLException ex) {
             plugin.getLogger().log(Level.SEVERE, "Failed to update Clan Chest", ex);
         }
     }
 
-    public void saveChests() {
-        plugin.getClanManager().getChests().forEach((clanChest) -> {
-            clanChest.save();
-            updateClanChest(clanChest);
-        });
+    private void setValues(PreparedStatement statement, ClanChest chest) throws SQLException, IOException {
+        byte[] serializedData = ClanChest.serialize(chest);
+        statement.setBytes(1, serializedData);
+        statement.setString(2, Objects.requireNonNull(chest.getClan()).getTag());
+    }
+
+    private PreparedStatement prepareUpdateClanChestStatement(Connection connection) throws SQLException {
+        String sql = "UPDATE `" + getPrefixedTable("chests") + "` SET `content` = ? WHERE `tag` = ?";
+        return connection.prepareStatement(sql);
     }
 
     private PreparedStatement prepareUpdateClanPlayerStatement(Connection connection) throws SQLException {
@@ -1342,7 +1344,7 @@ public final class StorageManager {
     }
 
 	/**
-	 * Saves modified Clans and ClanPlayers to the database
+	 * Saves modified Clans, ClanPlayers and ClanChests to the database
      * @since 2.10.2
      *
      * <p>
@@ -1375,6 +1377,18 @@ public final class StorageManager {
             modifiedClans.clear();
         } catch (SQLException ex) {
             plugin.getLogger().log(Level.SEVERE, "Error saving modified Clans:", ex);
+        }
+        try (PreparedStatement pst = prepareUpdateClanChestStatement(core.getConnection())) {
+            modifiedClanChests.retainAll(plugin.getClanManager().getChests());
+            for (ClanChest chest : modifiedClanChests) {
+                setValues(pst, chest);
+                pst.addBatch();
+            }
+            pst.executeBatch();
+
+            modifiedClanChests.clear();
+        } catch (SQLException | IOException ex) {
+            plugin.getLogger().log(Level.SEVERE, "Error saving modified ClanChests:", ex);
         }
     }
 }
