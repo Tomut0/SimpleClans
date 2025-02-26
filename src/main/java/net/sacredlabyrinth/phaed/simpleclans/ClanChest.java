@@ -1,64 +1,41 @@
 package net.sacredlabyrinth.phaed.simpleclans;
 
 import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 
-public class ClanChest implements Serializable {
+import static net.sacredlabyrinth.phaed.simpleclans.SimpleClans.lang;
+
+public class ClanChest implements Serializable, InventoryHolder {
 
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private transient Clan clan;
-    private transient Inventory chest;
+    private transient @Nullable Clan clan;
+    private transient @Nullable Inventory chest;
 
-    private final HashMap<Integer, Map<String, Object>> content;
+    private final @NotNull HashMap<Integer, Map<String, Object>> content;
 
     public ClanChest(@NotNull Clan clan) {
         this.clan = clan;
         content = new HashMap<>();
     }
 
-    public void open(Player player) {
-        player.openInventory(getInventory());
-    }
-
-    public void loadContent(@NotNull Clan clan) {
-        this.clan = clan;
-        chest = Bukkit.createInventory(null, 27, clan.getColorTag() + " Chest");
-        content.forEach((key, value) -> {
-            chest.setItem(key, ItemStack.deserialize(value));
-        });
-    }
-
-    public static ClanChest deserialize(byte[] data) throws IOException, ClassNotFoundException {
-        ByteArrayInputStream bais = new ByteArrayInputStream(data);
-        ObjectInputStream ois = new ObjectInputStream(bais);
-
-        return (ClanChest) ois.readObject();
-    }
-
-    public Clan getClan() {
-        return clan;
-    }
-
-    public static byte[] serialize(@NotNull ClanChest clanChest) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream(baos);
-        oos.writeObject(clanChest);
-        oos.close();
-
-        return baos.toByteArray();
+    public void loadContent() {
+        if (!content.isEmpty()) {
+            content.forEach((key, value) -> getInventory().setItem(key, ItemStack.deserialize(value)));
+        }
     }
 
     public void save() {
-        ItemStack[] contents = chest.getContents();
+        ItemStack[] contents = getInventory().getContents();
 
         for (int i = 0; i < contents.length; i++) {
             if (contents[i] != null) {
@@ -69,13 +46,36 @@ public class ClanChest implements Serializable {
         }
     }
 
-    public Inventory getInventory() {
+    public void setClan(@NotNull Clan clan) {
+        this.clan = clan;
+    }
+
+    public @Nullable Clan getClan() {
+        return clan;
+    }
+
+    @Override
+    public @NotNull Inventory getInventory() {
         if (chest == null) {
-            chest = Bukkit.createInventory(null, 27, clan.getColorTag() + " chest");
-            SimpleClans.getInstance().getStorageManager().insertClanChest(this);
-            return chest;
+            chest = Bukkit.createInventory(this, 27, lang("clan.chest.title"));
         }
 
         return chest;
+    }
+
+    public static ClanChest deserialize(byte[] data) throws IOException, ClassNotFoundException {
+        ByteArrayInputStream bais = new ByteArrayInputStream(data);
+        ObjectInputStream ois = new ObjectInputStream(bais);
+
+        return (ClanChest) ois.readObject();
+    }
+
+    public static byte[] serialize(@NotNull ClanChest clanChest) throws IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        ObjectOutputStream oos = new ObjectOutputStream(baos);
+        oos.writeObject(clanChest);
+        oos.close();
+
+        return baos.toByteArray();
     }
 }

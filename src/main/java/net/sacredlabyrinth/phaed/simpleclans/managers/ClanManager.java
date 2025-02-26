@@ -1165,14 +1165,19 @@ public final class ClanManager {
     }
 
     public ClanChest getOrCreateClanChest(Clan clan) {
-        return chests.computeIfAbsent(clan, ClanChest::new);
+        return chests.computeIfAbsent(clan, c -> {
+            var clanChest = new ClanChest(c);
+            plugin.getStorageManager().insertClanChest(clanChest);
+
+            return clanChest;
+        });
     }
 
     public void importClanChest(Clan clan, ClanChest chest) {
         chests.put(clan, chest);
     }
 
-    public HashMap<Clan, ClanChest> getChests() {
-        return chests;
+    public Collection<ClanChest> getChests() {
+        return chests.values();
     }
 }

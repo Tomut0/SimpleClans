@@ -19,8 +19,6 @@ import org.bukkit.scheduler.BukkitRunnable;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import javax.sql.rowset.serial.SerialBlob;
-import javax.sql.rowset.serial.SerialException;
 import java.io.IOException;
 import java.sql.*;
 import java.text.MessageFormat;
@@ -305,8 +303,10 @@ public final class StorageManager {
         retrieveClanChests().forEach((tag, clanChest) -> {
             Clan clan = plugin.getClanManager().getClan(tag);
             if (clan != null) {
+                clanChest.setClan(clan);
+                clanChest.loadContent();
+
                 plugin.getClanManager().importClanChest(clan, clanChest);
-                clanChest.loadContent(clan);
             }
         });
     }
@@ -474,8 +474,8 @@ public final class StorageManager {
 
         try {
             while (res.next()) {
-                byte[] blob = res.getBytes("content");
                 String tag = res.getString("tag");
+                byte[] blob = res.getBytes("content");
 
                 out.put(tag, ClanChest.deserialize(blob));
             }
@@ -930,7 +930,11 @@ public final class StorageManager {
         }
     }
 
-    public void insertClanChest(ClanChest cc) {
+    public void insertClanChest(@NotNull ClanChest cc) {
+        if (cc.getClan() == null) {
+            return;
+        }
+
         try {
             byte[] serializedData = ClanChest.serialize(cc);
 
@@ -948,7 +952,11 @@ public final class StorageManager {
         }
     }
 
-    public void updateClanChest(ClanChest cc) {
+    public void updateClanChest(@NotNull ClanChest cc) {
+        if (cc.getClan() == null) {
+            return;
+        }
+
         try {
             byte[] serializedData = ClanChest.serialize(cc);
 
@@ -966,7 +974,7 @@ public final class StorageManager {
     }
 
     public void saveChests() {
-        plugin.getClanManager().getChests().forEach((clan, clanChest) -> {
+        plugin.getClanManager().getChests().forEach((clanChest) -> {
             clanChest.save();
             updateClanChest(clanChest);
         });
