@@ -200,7 +200,6 @@ public class SimpleClans extends JavaPlugin {
         if (getSettingsManager().is(PERFORMANCE_SAVE_PERIODICALLY)) {
             getStorageManager().saveModified();
         }
-        getStorageManager().saveChests();
         getStorageManager().closeConnection();
         getPermissionsManager().savePermissions();
         getSettingsManager().loadAndSave();

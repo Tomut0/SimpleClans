@@ -62,6 +62,7 @@ public class Clan implements Serializable, Comparable<Clan> {
     private List<Rank> ranks = new ArrayList<>();
     private @Nullable String defaultRank = null;
     private @Nullable ItemStack banner;
+    private ClanChest clanChest = new ClanChest();
 
     /**
      *
@@ -1757,5 +1758,13 @@ public class Clan implements Serializable, Comparable<Clan> {
             return banner.clone();
         }
         return null;
+    }
+
+    public ClanChest getClanChest() {
+        return clanChest;
+    }
+
+    public void setClanChest(ClanChest clanChest) {
+        this.clanChest = clanChest;
     }
 }

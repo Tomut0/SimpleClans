@@ -392,9 +392,8 @@ public class ClanCommands extends BaseCommand {
     @Description("{@@command.description.chest}")
     @CommandPermission("simpleclans.member.chest")
     public void chest(@Conditions("clan_member") Player player, Clan clan) {
-        var chest = cm.getOrCreateClanChest(clan);
-        player.openInventory(chest.getInventory());
-        chest.sync();
-        storage.updateClanChest(chest);
+        var clanChest = clan.getClanChest();
+        clanChest.sync();
+        player.openInventory(clanChest.getInventory());
     }
 }

@@ -18,13 +18,10 @@ public class ClanChest implements Serializable, InventoryHolder {
     @Serial
     private static final long serialVersionUID = 1L;
 
-    private transient @Nullable Clan clan;
     private transient @Nullable Inventory chest;
-
     private final @NotNull HashMap<Integer, Map<String, Object>> content;
 
-    public ClanChest(@NotNull Clan clan) {
-        this.clan = clan;
+    public ClanChest() {
         content = new HashMap<>();
     }
 
@@ -44,14 +41,6 @@ public class ClanChest implements Serializable, InventoryHolder {
                 content.remove(i);
             }
         }
-    }
-
-    public void setClan(@NotNull Clan clan) {
-        this.clan = clan;
-    }
-
-    public @Nullable Clan getClan() {
-        return clan;
     }
 
     @Override

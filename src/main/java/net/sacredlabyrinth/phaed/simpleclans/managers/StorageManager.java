@@ -40,7 +40,6 @@ public final class StorageManager {
     private final HashMap<String, ChatBlock> chatBlocks = new HashMap<>();
     private final Set<Clan> modifiedClans = new HashSet<>();
     private final Set<ClanPlayer> modifiedClanPlayers = new HashSet<>();
-    private final Set<ClanChest> modifiedClanChests = new HashSet<>();
 
     /**
      *
@@ -104,6 +103,7 @@ public final class StorageManager {
                     		+ " `fee_value` double(64,2),"
                     		+ " `ranks` text NOT NULL,"
                             + " `banner` text,"
+                            + " `chest_content` BLOB,"
                     		+ " PRIMARY KEY  (`id`),"
                     		+ " UNIQUE KEY `uq_simpleclans_1` (`tag`));";
                     core.execute(query);
@@ -149,18 +149,6 @@ public final class StorageManager {
                     		+ " PRIMARY KEY  (`kill_id`));";
                     core.execute(query);
                 }
-
-                if (!core.existsTable(getPrefixedTable("chests"))) {
-                    plugin.getLogger().info("Creating table: " + getPrefixedTable("chests"));
-
-                    String query = "CREATE TABLE IF NOT EXISTS %s ("
-                            + " `id` BIGINT(20) NOT NULL AUTO_INCREMENT,"
-                            + " `tag` varchar(25) NOT NULL,"
-                            + " `content` BLOB NOT NULL,"
-                            + ");";
-
-                    core.execute(query);
-                }
             } else {
                 plugin.getServer().getConsoleSender().sendMessage("[SimpleClans] " + ChatColor.RED + lang("mysql.connection.failed"));
             }
@@ -194,6 +182,7 @@ public final class StorageManager {
                     		+ " `fee_value` double(64,2),"
                     		+ " `ranks` text NOT NULL,"
                             + " `banner` text,"
+                            + " `chest_content` BLOB,"
                     		+ "  PRIMARY KEY  (`id`),"
                     		+ " UNIQUE (`tag`));";
                     core.execute(query);
@@ -239,18 +228,6 @@ public final class StorageManager {
                     		+ " PRIMARY KEY  (`kill_id`));";
                     core.execute(query);
                 }
-
-                if (!core.existsTable(getPrefixedTable("chests"))) {
-                    plugin.getLogger().info("Creating table: " + getPrefixedTable("chests"));
-
-                    String query = "CREATE TABLE IF NOT EXISTS " + getPrefixedTable("chests") + " ("
-                            + "`id` INTEGER PRIMARY KEY AUTOINCREMENT, "
-                            + "`tag` VARCHAR(25) NOT NULL, "
-                            + "`content` BLOB NOT NULL"
-                            + ");";
-
-                    core.execute(query);
-                }
             } else {
                 plugin.getServer().getConsoleSender().sendMessage("[SimpleClans] " + ChatColor.RED + lang("sqlite.connection.failed"));
             }
@@ -275,6 +252,7 @@ public final class StorageManager {
 
         for (Clan clan : clans) {
             plugin.getClanManager().importClan(clan);
+            clan.getClanChest().loadContent();
         }
 
         for (Clan clan : clans) {
@@ -300,16 +278,6 @@ public final class StorageManager {
         if (!cps.isEmpty()) {
         	plugin.getLogger().info(MessageFormat.format(lang("clan.players"), cps.size()));
         }
-
-        retrieveClanChests().forEach((tag, clanChest) -> {
-            Clan clan = plugin.getClanManager().getClan(tag);
-            if (clan != null) {
-                clanChest.setClan(clan);
-                clanChest.loadContent();
-
-                plugin.getClanManager().importClanChest(clan, clanChest);
-            }
-        });
     }
 
     /**
@@ -421,6 +389,10 @@ public final class StorageManager {
                         boolean feeEnabled = res.getBoolean("fee_enabled");
                         ItemStack banner = YAMLSerializer.deserialize(res.getString("banner"), ItemStack.class);
 
+                        byte[] chestContent = res.getBytes("chest_content");
+                        ClanChest cc = chestContent != null && chestContent.length > 0 ?
+                                ClanChest.deserialize(chestContent) : new ClanChest();
+
                         if (founded == 0) {
                             founded = (new Date()).getTime();
                         }
@@ -448,6 +420,7 @@ public final class StorageManager {
                         clan.setRanks(Helper.ranksFromJson(ranksJson));
                         clan.setDefaultRank(Helper.defaultRankFromJson(ranksJson));
                         clan.setBanner(banner);
+                        clan.setClanChest(cc);
 
                         out.add(clan);
                     } catch (Exception ex) {
@@ -458,35 +431,6 @@ public final class StorageManager {
                 plugin.getLogger().severe(String.format("An Error occurred: %s", ex.getErrorCode()));
                 plugin.getLogger().log(Level.SEVERE, null, ex);
             }
-        }
-
-        return out;
-    }
-
-    public Map<String, ClanChest> retrieveClanChests() {
-        HashMap<String, ClanChest> out = new HashMap<>();
-
-        String query = "SELECT * FROM `" + getPrefixedTable("chests") + "`;";
-        ResultSet res = core.select(query);
-
-        if (res == null) {
-            return out;
-        }
-
-        try {
-            while (res.next()) {
-                String tag = res.getString("tag");
-                byte[] blob = res.getBytes("content");
-
-                out.put(tag, ClanChest.deserialize(blob));
-            }
-        } catch (SQLException ex) {
-            plugin.getLogger().severe(String.format("An Error occurred: %s", ex.getErrorCode()));
-            plugin.getLogger().log(Level.SEVERE, null, ex);
-        } catch (IOException ex) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to read a clan chest blob", ex);
-        } catch (ClassNotFoundException ex) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to deserialize a clan chest", ex);
         }
 
         return out;
@@ -523,6 +467,7 @@ public final class StorageManager {
                         double feeValue = res.getDouble("fee_value");
                         boolean feeEnabled = res.getBoolean("fee_enabled");
                         ItemStack banner = YAMLSerializer.deserialize(res.getString("banner"), ItemStack.class);
+                        ClanChest cc = ClanChest.deserialize(res.getBytes("chest_content"));
 
                         if (founded == 0) {
                             founded = (new Date()).getTime();
@@ -551,6 +496,7 @@ public final class StorageManager {
                         clan.setRanks(Helper.ranksFromJson(ranksJson));
                         clan.setDefaultRank(Helper.defaultRankFromJson(ranksJson));
                         clan.setBanner(banner);
+                        clan.setClanChest(cc);
 
                         out = clan;
                     } catch (Exception ex) {
@@ -748,9 +694,16 @@ public final class StorageManager {
     public void insertClan(Clan clan) {
         plugin.getProxyManager().sendUpdate(clan);
 
+        String serialized = "";
+        try {
+            serialized = Arrays.toString(ClanChest.serialize(clan.getClanChest()));
+        } catch (IOException ex) {
+            plugin.getLogger().log(Level.SEVERE, "Serialization failure: ", ex);
+        }
+
         String query = "INSERT INTO `" + getPrefixedTable("clans") + "` (`banner`, `ranks`, `description`, `fee_enabled`, `fee_value`, `verified`, `tag`," +
                 " `color_tag`, `name`, `friendly_fire`, `founded`, `last_used`, `packed_allies`, `packed_rivals`, " +
-                "`packed_bb`, `cape_url`, `flags`, `balance`) ";
+                "`packed_bb`, `cape_url`, `flags`, `chest_content`, `balance`) ";
         String values = "VALUES ( '"
                                     + Helper.escapeQuotes(YAMLSerializer.serialize(clan.getBanner())) + "','"
         							+ Helper.escapeQuotes(Helper.ranksToJson(clan.getRanks(), clan.getDefaultRank())) + "','"
@@ -769,6 +722,7 @@ public final class StorageManager {
         							+ Helper.escapeQuotes(clan.getPackedBb()) + "','"
         							+ Helper.escapeQuotes(clan.getCapeUrl()) + "','"
         							+ Helper.escapeQuotes(clan.getFlags()) + "','"
+                                    + Helper.escapeQuotes(serialized) + "','"
         							+ Helper.escapeQuotes(String.valueOf(clan.getBalance())) + "');";
         core.executeUpdate(query + values);
     }
@@ -838,7 +792,7 @@ public final class StorageManager {
         try (PreparedStatement st = prepareUpdateClanStatement(core.getConnection())) {
             setValues(st, clan);
             st.executeUpdate();
-        } catch (SQLException ex) {
+        } catch (SQLException | IOException ex) {
             plugin.getLogger().log(Level.SEVERE, String.format("Error updating Clan %s", clan.getTag()), ex);
         }
     }
@@ -846,11 +800,11 @@ public final class StorageManager {
     private PreparedStatement prepareUpdateClanStatement(Connection connection) throws SQLException {
         String sql = "UPDATE `" + getPrefixedTable("clans") + "` SET ranks = ?, banner = ?, description = ?, fee_enabled = ?, fee_value = ?, " +
                 "verified = ?, tag = ?, color_tag = ?, `name` = ?, friendly_fire = ?, founded = ?, last_used = ?, " +
-                "packed_allies = ?, packed_rivals = ?, packed_bb = ?, balance = ?, flags = ? WHERE tag = ?;";
+                "packed_allies = ?, packed_rivals = ?, packed_bb = ?, balance = ?, flags = ?, chest_content = ? WHERE tag = ?;";
         return connection.prepareStatement(sql);
     }
 
-    private void setValues(PreparedStatement statement, Clan clan) throws SQLException {
+    private void setValues(PreparedStatement statement, Clan clan) throws SQLException, IOException {
         statement.setString(1, Helper.ranksToJson(clan.getRanks(), clan.getDefaultRank()));
         statement.setString(2, YAMLSerializer.serialize(clan.getBanner()));
         statement.setString(3, clan.getDescription());
@@ -868,7 +822,8 @@ public final class StorageManager {
         statement.setString(15, clan.getPackedBb());
         statement.setDouble(16, clan.getBalance());
         statement.setString(17, clan.getFlags());
-        statement.setString(18, clan.getTag());
+        statement.setBytes(18, ClanChest.serialize(clan.getClanChest()));
+        statement.setString(19, clan.getTag());
     }
 
     /**
@@ -929,57 +884,6 @@ public final class StorageManager {
         } catch (SQLException ex) {
             plugin.getLogger().log(Level.SEVERE, String.format("Error updating ClanPlayer %s", cp.getName()), ex);
         }
-    }
-
-    public void insertClanChest(@NotNull ClanChest cc) {
-        if (cc.getClan() == null) {
-            return;
-        }
-
-        try {
-            byte[] serializedData = ClanChest.serialize(cc);
-
-            String query = "INSERT INTO " + getPrefixedTable("chests") + " (`tag`, `content`) VALUES (?, ?)";
-
-            try (PreparedStatement ps = core.getConnection().prepareStatement(query)) {
-
-                ps.setString(1, cc.getClan().getTag());
-                ps.setBytes(2, serializedData);
-
-                ps.executeUpdate();
-            }
-        } catch (IOException | SQLException ex) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to insert Clan Chest", ex);
-        }
-    }
-
-    public void updateClanChest(@NotNull ClanChest cc) {
-        if (cc.getClan() == null) {
-            return;
-        }
-
-        if (plugin.getSettingsManager().is(PERFORMANCE_SAVE_PERIODICALLY)) {
-            modifiedClanChests.add(cc);
-            return;
-        }
-
-        try (PreparedStatement ps = prepareUpdateClanChestStatement(core.getConnection())) {
-            setValues(ps, cc);
-            ps.executeUpdate();
-        } catch (IOException | SQLException ex) {
-            plugin.getLogger().log(Level.SEVERE, "Failed to update Clan Chest", ex);
-        }
-    }
-
-    private void setValues(PreparedStatement statement, ClanChest chest) throws SQLException, IOException {
-        byte[] serializedData = ClanChest.serialize(chest);
-        statement.setBytes(1, serializedData);
-        statement.setString(2, Objects.requireNonNull(chest.getClan()).getTag());
-    }
-
-    private PreparedStatement prepareUpdateClanChestStatement(Connection connection) throws SQLException {
-        String sql = "UPDATE `" + getPrefixedTable("chests") + "` SET `content` = ? WHERE `tag` = ?";
-        return connection.prepareStatement(sql);
     }
 
     private PreparedStatement prepareUpdateClanPlayerStatement(Connection connection) throws SQLException {
@@ -1290,6 +1194,9 @@ public final class StorageManager {
             query = "ALTER TABLE sc_kills ADD `created_at` datetime NULL;";
             core.execute(query);
         }
+        if (!core.existsColumn(getPrefixedTable("clans"), "chest_content")) {
+            core.execute("ALTER TABLE `" + getPrefixedTable("clans") + "` ADD COLUMN `chest_content` BLOB DEFAULT NULL;");
+        }
     }
 
     /**
@@ -1375,20 +1282,8 @@ public final class StorageManager {
             pst.executeBatch();
 
             modifiedClans.clear();
-        } catch (SQLException ex) {
-            plugin.getLogger().log(Level.SEVERE, "Error saving modified Clans:", ex);
-        }
-        try (PreparedStatement pst = prepareUpdateClanChestStatement(core.getConnection())) {
-            modifiedClanChests.retainAll(plugin.getClanManager().getChests());
-            for (ClanChest chest : modifiedClanChests) {
-                setValues(pst, chest);
-                pst.addBatch();
-            }
-            pst.executeBatch();
-
-            modifiedClanChests.clear();
         } catch (SQLException | IOException ex) {
-            plugin.getLogger().log(Level.SEVERE, "Error saving modified ClanChests:", ex);
+            plugin.getLogger().log(Level.SEVERE, "Error saving modified Clans:", ex);
         }
     }
 }

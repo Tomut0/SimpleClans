@@ -45,8 +45,6 @@ public final class ClanManager {
     private final ConcurrentHashMap<UUID, ClanPlayer> clanPlayers = new ConcurrentHashMap<>();
     private final HashMap<ClanPlayer, List<Kill>> kills = new HashMap<>();
 
-    private final HashMap<Clan, ClanChest> chests = new HashMap<>();
-
     /**
      *
      */
@@ -1162,22 +1160,5 @@ public final class ClanManager {
         }
 
         return false;
-    }
-
-    public ClanChest getOrCreateClanChest(Clan clan) {
-        return chests.computeIfAbsent(clan, c -> {
-            var clanChest = new ClanChest(c);
-            plugin.getStorageManager().insertClanChest(clanChest);
-
-            return clanChest;
-        });
-    }
-
-    public void importClanChest(Clan clan, ClanChest chest) {
-        chests.put(clan, chest);
-    }
-
-    public Collection<ClanChest> getChests() {
-        return chests.values();
     }
 }
