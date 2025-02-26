@@ -145,6 +145,7 @@ public class SimpleClans extends JavaPlugin {
         pm.registerEvents(new TamableMobsSharing(this), this);
         pm.registerEvents(new PvPOnlyInWar(this), this);
         pm.registerEvents(new FriendlyFire(this), this);
+        pm.registerEvents(new ClanChestListener(this), this);
     }
 
     private void hookIntoPAPI() {

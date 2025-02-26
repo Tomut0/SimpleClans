@@ -19,7 +19,10 @@ public class ClanChest implements Serializable, InventoryHolder {
     private static final long serialVersionUID = 1L;
 
     private transient @Nullable Inventory chest;
+    private transient boolean locked = false;
+
     private final @NotNull HashMap<Integer, Map<String, Object>> content;
+
 
     public ClanChest() {
         content = new HashMap<>();
@@ -50,6 +53,14 @@ public class ClanChest implements Serializable, InventoryHolder {
         }
 
         return chest;
+    }
+
+    public boolean isLocked() {
+        return locked;
+    }
+
+    public void setLocked(boolean locked) {
+        this.locked = locked;
     }
 
     public static ClanChest deserialize(byte[] data) throws IOException, ClassNotFoundException {

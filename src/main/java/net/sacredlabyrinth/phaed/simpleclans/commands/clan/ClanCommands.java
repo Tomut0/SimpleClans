@@ -11,6 +11,7 @@ import net.sacredlabyrinth.phaed.simpleclans.events.TagChangeEvent;
 import net.sacredlabyrinth.phaed.simpleclans.managers.*;
 import net.sacredlabyrinth.phaed.simpleclans.utils.ChatUtils;
 import net.sacredlabyrinth.phaed.simpleclans.utils.CurrencyFormat;
+import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 
@@ -393,7 +394,13 @@ public class ClanCommands extends BaseCommand {
     @CommandPermission("simpleclans.member.chest")
     public void chest(@Conditions("clan_member") Player player, Clan clan) {
         var clanChest = clan.getClanChest();
-        clanChest.sync();
-        player.openInventory(clanChest.getInventory());
+
+        if (clanChest.isLocked() && settings.is(PERFORMANCE_USE_BUNGEECORD)) {
+            player.sendMessage(RED + "Someone is using the clan chest right now.");
+        } else {
+            player.openInventory(clanChest.getInventory());
+            clanChest.setLocked(true);
+            storage.updateClan(clan, true);
+        }
     }
 }
