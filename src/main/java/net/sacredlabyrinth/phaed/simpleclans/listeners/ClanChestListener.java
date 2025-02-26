@@ -3,7 +3,6 @@ package net.sacredlabyrinth.phaed.simpleclans.listeners;
 import net.sacredlabyrinth.phaed.simpleclans.ClanChest;
 import net.sacredlabyrinth.phaed.simpleclans.ClanPlayer;
 import net.sacredlabyrinth.phaed.simpleclans.SimpleClans;
-import org.bukkit.ChatColor;
 import org.bukkit.entity.HumanEntity;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.inventory.InventoryCloseEvent;
@@ -23,7 +22,7 @@ public class ClanChestListener extends SCListener{
         }
 
         if (event.getInventory().getHolder() instanceof ClanChest cc) {
-            cc.setLocked(false);
+            cc.setLockedServer(null);
             plugin.getStorageManager().updateClan(clanPlayer.getClan(), true);
         }
     }

@@ -21,7 +21,7 @@ public class ClanChestAdapter extends TypeAdapter<ClanChest> {
         ItemStack[] contents = clanChest.getInventory().getContents();
         out.value(gson.toJson(contents, ItemStack[].class));
 
-        out.name("locked").value(clanChest.isLocked());
+        out.name("locked-server").value(clanChest.getLockedServer());
 
         out.endObject();
     }
@@ -32,7 +32,7 @@ public class ClanChestAdapter extends TypeAdapter<ClanChest> {
         in.beginObject();
 
         ItemStack[] items = null;
-        boolean locked = false;
+        String locked = "";
 
         while (in.hasNext()) {
             String name = in.nextName();
@@ -41,9 +41,8 @@ public class ClanChestAdapter extends TypeAdapter<ClanChest> {
                     String json = in.nextString();
                     items = gson.fromJson(json, ItemStack[].class);
                     break;
-
-                case "locked":
-                    locked = in.nextBoolean();
+                case "locked-server":
+                    locked = in.nextString();
                     break;
 
                 default:
@@ -57,9 +56,9 @@ public class ClanChestAdapter extends TypeAdapter<ClanChest> {
         ClanChest clanChest = new ClanChest();
         if (items != null) {
             clanChest.getInventory().setContents(items);
-            clanChest.sync();
         }
-        clanChest.setLocked(locked);
+
+        clanChest.setLockedServer(locked);
 
         return clanChest;
     }

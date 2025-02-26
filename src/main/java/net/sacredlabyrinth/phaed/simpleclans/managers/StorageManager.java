@@ -252,7 +252,6 @@ public final class StorageManager {
 
         for (Clan clan : clans) {
             plugin.getClanManager().importClan(clan);
-            clan.getClanChest().loadContent();
         }
 
         for (Clan clan : clans) {
@@ -390,8 +389,7 @@ public final class StorageManager {
                         ItemStack banner = YAMLSerializer.deserialize(res.getString("banner"), ItemStack.class);
 
                         byte[] chestContent = res.getBytes("chest_content");
-                        ClanChest cc = chestContent != null && chestContent.length > 0 ?
-                                ClanChest.deserialize(chestContent) : new ClanChest();
+                        ClanChest cc = ClanChest.Serializer.deserialize(new ClanChest(), chestContent);
 
                         if (founded == 0) {
                             founded = (new Date()).getTime();
@@ -467,7 +465,7 @@ public final class StorageManager {
                         double feeValue = res.getDouble("fee_value");
                         boolean feeEnabled = res.getBoolean("fee_enabled");
                         ItemStack banner = YAMLSerializer.deserialize(res.getString("banner"), ItemStack.class);
-                        ClanChest cc = ClanChest.deserialize(res.getBytes("chest_content"));
+                        ClanChest cc = ClanChest.Serializer.deserialize(new ClanChest(), res.getBytes("chest_content"));
 
                         if (founded == 0) {
                             founded = (new Date()).getTime();
@@ -696,7 +694,7 @@ public final class StorageManager {
 
         String serialized = "";
         try {
-            serialized = Arrays.toString(ClanChest.serialize(clan.getClanChest()));
+            serialized = Arrays.toString(ClanChest.Serializer.serialize(clan.getClanChest()));
         } catch (IOException ex) {
             plugin.getLogger().log(Level.SEVERE, "Serialization failure: ", ex);
         }
@@ -822,7 +820,7 @@ public final class StorageManager {
         statement.setString(15, clan.getPackedBb());
         statement.setDouble(16, clan.getBalance());
         statement.setString(17, clan.getFlags());
-        statement.setBytes(18, ClanChest.serialize(clan.getClanChest()));
+        statement.setBytes(18, ClanChest.Serializer.serialize(clan.getClanChest()));
         statement.setString(19, clan.getTag());
     }
 

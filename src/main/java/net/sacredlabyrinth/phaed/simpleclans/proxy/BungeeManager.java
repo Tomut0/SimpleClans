@@ -172,10 +172,10 @@ public final class BungeeManager implements ProxyManager, PluginMessageListener 
                 ByteArrayDataOutput output = ByteStreams.newDataOutput();
                 output.writeUTF("GetServer");
 
-                Bukkit.getScheduler().runTask(plugin, () -> {
+                Bukkit.getScheduler().runTaskLater(plugin, () -> {
                     event.getPlayer().sendPluginMessage(plugin, "BungeeCord", output.toByteArray());
                     PlayerJoinEvent.getHandlerList().unregister(this); //only needed once
-                });
+                }, 20L);
             }
         };
         Bukkit.getPluginManager().registerEvents(listener, plugin);

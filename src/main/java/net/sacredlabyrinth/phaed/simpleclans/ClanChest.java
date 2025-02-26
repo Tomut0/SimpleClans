@@ -8,8 +8,10 @@ import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.*;
-import java.util.HashMap;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import static net.sacredlabyrinth.phaed.simpleclans.SimpleClans.lang;
 
@@ -19,32 +21,8 @@ public class ClanChest implements Serializable, InventoryHolder {
     private static final long serialVersionUID = 1L;
 
     private transient @Nullable Inventory chest;
-    private transient boolean locked = false;
 
-    private final @NotNull HashMap<Integer, Map<String, Object>> content;
-
-
-    public ClanChest() {
-        content = new HashMap<>();
-    }
-
-    public void loadContent() {
-        if (!content.isEmpty()) {
-            content.forEach((key, value) -> getInventory().setItem(key, ItemStack.deserialize(value)));
-        }
-    }
-
-    public void sync() {
-        ItemStack[] contents = getInventory().getContents();
-
-        for (int i = 0; i < contents.length; i++) {
-            if (contents[i] != null) {
-                content.put(i, contents[i].serialize());
-            } else {
-                content.remove(i);
-            }
-        }
-    }
+    private transient String lockedServer;
 
     @Override
     public @NotNull Inventory getInventory() {
@@ -55,27 +33,50 @@ public class ClanChest implements Serializable, InventoryHolder {
         return chest;
     }
 
-    public boolean isLocked() {
-        return locked;
+    public String getLockedServer() {
+        return lockedServer;
     }
 
-    public void setLocked(boolean locked) {
-        this.locked = locked;
+    public boolean isLockedServer() {
+        return lockedServer == null || lockedServer.isEmpty() ||
+                Objects.equals(lockedServer, SimpleClans.getInstance().getProxyManager().getServerName());
     }
 
-    public static ClanChest deserialize(byte[] data) throws IOException, ClassNotFoundException {
-        ByteArrayInputStream bais = new ByteArrayInputStream(data);
-        ObjectInputStream ois = new ObjectInputStream(bais);
-
-        return (ClanChest) ois.readObject();
+    public void setLockedServer(@Nullable String lockedServer) {
+        this.lockedServer = lockedServer;
     }
 
-    public static byte[] serialize(@NotNull ClanChest clanChest) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ObjectOutputStream oos = new ObjectOutputStream(baos);
-        oos.writeObject(clanChest);
-        oos.close();
+    public static class Serializer  {
 
-        return baos.toByteArray();
+        @SuppressWarnings("unchecked")
+        public static ClanChest deserialize(ClanChest cc, byte[] data) throws IOException, ClassNotFoundException {
+            ByteArrayInputStream bais = new ByteArrayInputStream(data);
+            ObjectInputStream ois = new ObjectInputStream(bais);
+
+            List<Map<String, Object>> serializedContents = (List<Map<String, Object>>) ois.readObject();
+            ois.close();
+
+            ItemStack[] contents = serializedContents.stream()
+                    .map(map -> map != null ? ItemStack.deserialize(map) : null) // Convert Map -> ItemStack
+                    .toArray(ItemStack[]::new);
+
+            cc.getInventory().setContents(contents);
+            return cc;
+        }
+
+        public static byte[] serialize(@NotNull ClanChest clanChest) throws IOException {
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ObjectOutputStream oos = new ObjectOutputStream(baos);
+
+            ItemStack[] contents = clanChest.getInventory().getContents();
+            List<Map<String, Object>> serializedContents = Arrays.stream(contents)
+                    .map(item -> item != null ? item.serialize() : null)
+                    .toList();
+
+            oos.writeObject(serializedContents);
+            oos.close();
+
+            return baos.toByteArray();
+        }
     }
 }
