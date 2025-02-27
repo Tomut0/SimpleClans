@@ -399,9 +399,14 @@ public class ClanCommands extends BaseCommand {
             return;
         }
 
-        if (clanChest.isLockedServer()) {
+        String serverName = plugin.getProxyManager().getServerName();
+        if (serverName == null || serverName.isEmpty()) {
+            throw new IllegalStateException("Server name is empty");
+        }
+
+        if (clanChest.canUseCurrentServer()) {
+            clanChest.useServer(serverName);
             player.openInventory(clanChest.getInventory());
-            clanChest.setLockedServer(plugin.getProxyManager().getServerName());
             storage.updateClan(clan, true);
         } else {
             player.sendMessage(RED + "Someone is using the clan chest right now.");

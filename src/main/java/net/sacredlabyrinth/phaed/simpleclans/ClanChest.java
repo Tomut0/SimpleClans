@@ -11,7 +11,7 @@ import java.io.*;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.logging.Level;
 
 import static net.sacredlabyrinth.phaed.simpleclans.SimpleClans.lang;
 
@@ -22,7 +22,7 @@ public class ClanChest implements Serializable, InventoryHolder {
 
     private transient @Nullable Inventory chest;
 
-    private transient String lockedServer;
+    private transient String serverUsing;
 
     @Override
     public @NotNull Inventory getInventory() {
@@ -33,50 +33,71 @@ public class ClanChest implements Serializable, InventoryHolder {
         return chest;
     }
 
-    public String getLockedServer() {
-        return lockedServer;
+    public String getServerUsing() {
+        return serverUsing;
     }
 
-    public boolean isLockedServer() {
-        return lockedServer == null || lockedServer.isEmpty() ||
-                Objects.equals(lockedServer, SimpleClans.getInstance().getProxyManager().getServerName());
-    }
-
-    public void setLockedServer(@Nullable String lockedServer) {
-        this.lockedServer = lockedServer;
-    }
-
-    public static class Serializer  {
-
-        @SuppressWarnings("unchecked")
-        public static ClanChest deserialize(ClanChest cc, byte[] data) throws IOException, ClassNotFoundException {
-            ByteArrayInputStream bais = new ByteArrayInputStream(data);
-            ObjectInputStream ois = new ObjectInputStream(bais);
-
-            List<Map<String, Object>> serializedContents = (List<Map<String, Object>>) ois.readObject();
-            ois.close();
-
-            ItemStack[] contents = serializedContents.stream()
-                    .map(map -> map != null ? ItemStack.deserialize(map) : null) // Convert Map -> ItemStack
-                    .toArray(ItemStack[]::new);
-
-            cc.getInventory().setContents(contents);
-            return cc;
+    public void useServer(@NotNull String server) {
+        if (serverUsing == null) {
+            this.serverUsing = server;
         }
+    }
 
-        public static byte[] serialize(@NotNull ClanChest clanChest) throws IOException {
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            ObjectOutputStream oos = new ObjectOutputStream(baos);
+    public void releaseServer() {
+        this.serverUsing = null;
+    }
 
-            ItemStack[] contents = clanChest.getInventory().getContents();
-            List<Map<String, Object>> serializedContents = Arrays.stream(contents)
-                    .map(item -> item != null ? item.serialize() : null)
-                    .toList();
+    public boolean canUseCurrentServer() {
+        return serverUsing == null || serverUsing.equals(SimpleClans.getInstance().getProxyManager().getServerName());
+    }
 
-            oos.writeObject(serializedContents);
-            oos.close();
-
+    public byte[] serialize() {
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+            oos.writeObject(this);
             return baos.toByteArray();
+        } catch (IOException ex) {
+            SimpleClans.getInstance().getLogger().log(Level.SEVERE, "Failed to serialize clan chest", ex);
         }
+
+        return new byte[0];
+    }
+
+    public static @NotNull ClanChest deserialize(byte[] data) {
+        try (ByteArrayInputStream bais = new ByteArrayInputStream(data);
+             ObjectInputStream ois = new ObjectInputStream(bais)) {
+            return (ClanChest) ois.readObject();
+        } catch (IOException | ClassNotFoundException ex) {
+            SimpleClans.getInstance().getLogger().log(Level.SEVERE, "Failed to deserialize clan chest", ex);
+        }
+
+        return new ClanChest();
+    }
+
+    @Serial
+    private void writeObject(ObjectOutputStream out) throws IOException {
+        out.defaultWriteObject();
+
+        ItemStack[] contents = chest != null ? chest.getContents() : new ItemStack[27];
+        List<Map<String, Object>> serializedContents = Arrays.stream(contents)
+                .map(item -> item != null ? item.serialize() : null)
+                .toList();
+
+        out.writeObject(serializedContents);
+    }
+
+    @Serial
+    @SuppressWarnings("unchecked")
+    private void readObject(ObjectInputStream in) throws IOException, ClassNotFoundException {
+        in.defaultReadObject();
+
+        chest = Bukkit.createInventory(this, 27, lang("clan.chest.title"));
+
+        List<Map<String, Object>> serializedContents = (List<Map<String, Object>>) in.readObject();
+        ItemStack[] contents = serializedContents.stream()
+                .map(map -> map != null ? ItemStack.deserialize(map) : null)
+                .toArray(ItemStack[]::new);
+
+        chest.setContents(contents);
     }
 }

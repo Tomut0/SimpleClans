@@ -22,7 +22,7 @@ public class ClanChestListener extends SCListener{
         }
 
         if (event.getInventory().getHolder() instanceof ClanChest cc) {
-            cc.setLockedServer(null);
+            cc.releaseServer();
             plugin.getStorageManager().updateClan(clanPlayer.getClan(), true);
         }
     }

@@ -387,9 +387,7 @@ public final class StorageManager {
                         double feeValue = res.getDouble("fee_value");
                         boolean feeEnabled = res.getBoolean("fee_enabled");
                         ItemStack banner = YAMLSerializer.deserialize(res.getString("banner"), ItemStack.class);
-
-                        byte[] chestContent = res.getBytes("chest_content");
-                        ClanChest cc = ClanChest.Serializer.deserialize(new ClanChest(), chestContent);
+                        ClanChest cc = ClanChest.deserialize(res.getBytes("chest_content"));
 
                         if (founded == 0) {
                             founded = (new Date()).getTime();
@@ -465,7 +463,7 @@ public final class StorageManager {
                         double feeValue = res.getDouble("fee_value");
                         boolean feeEnabled = res.getBoolean("fee_enabled");
                         ItemStack banner = YAMLSerializer.deserialize(res.getString("banner"), ItemStack.class);
-                        ClanChest cc = ClanChest.Serializer.deserialize(new ClanChest(), res.getBytes("chest_content"));
+                        ClanChest cc = ClanChest.deserialize(res.getBytes("chest_content"));
 
                         if (founded == 0) {
                             founded = (new Date()).getTime();
@@ -692,13 +690,6 @@ public final class StorageManager {
     public void insertClan(Clan clan) {
         plugin.getProxyManager().sendUpdate(clan);
 
-        String serialized = "";
-        try {
-            serialized = Arrays.toString(ClanChest.Serializer.serialize(clan.getClanChest()));
-        } catch (IOException ex) {
-            plugin.getLogger().log(Level.SEVERE, "Serialization failure: ", ex);
-        }
-
         String query = "INSERT INTO `" + getPrefixedTable("clans") + "` (`banner`, `ranks`, `description`, `fee_enabled`, `fee_value`, `verified`, `tag`," +
                 " `color_tag`, `name`, `friendly_fire`, `founded`, `last_used`, `packed_allies`, `packed_rivals`, " +
                 "`packed_bb`, `cape_url`, `flags`, `chest_content`, `balance`) ";
@@ -720,7 +711,7 @@ public final class StorageManager {
         							+ Helper.escapeQuotes(clan.getPackedBb()) + "','"
         							+ Helper.escapeQuotes(clan.getCapeUrl()) + "','"
         							+ Helper.escapeQuotes(clan.getFlags()) + "','"
-                                    + Helper.escapeQuotes(serialized) + "','"
+                                    + Helper.escapeQuotes(Arrays.toString(clan.getClanChest().serialize())) + "','"
         							+ Helper.escapeQuotes(String.valueOf(clan.getBalance())) + "');";
         core.executeUpdate(query + values);
     }
@@ -820,7 +811,7 @@ public final class StorageManager {
         statement.setString(15, clan.getPackedBb());
         statement.setDouble(16, clan.getBalance());
         statement.setString(17, clan.getFlags());
-        statement.setBytes(18, ClanChest.Serializer.serialize(clan.getClanChest()));
+        statement.setBytes(18, clan.getClanChest().serialize());
         statement.setString(19, clan.getTag());
     }
 
