@@ -1,6 +1,6 @@
 package net.sacredlabyrinth.phaed.simpleclans.listeners;
 
-import net.sacredlabyrinth.phaed.simpleclans.ClanChest;
+import net.sacredlabyrinth.phaed.simpleclans.chest.ClanChest;
 import net.sacredlabyrinth.phaed.simpleclans.ClanPlayer;
 import net.sacredlabyrinth.phaed.simpleclans.SimpleClans;
 import org.bukkit.entity.HumanEntity;
@@ -21,9 +21,14 @@ public class ClanChestListener extends SCListener{
             return;
         }
 
-        if (event.getInventory().getHolder() instanceof ClanChest cc) {
-            cc.releaseServer();
-            plugin.getStorageManager().updateClan(clanPlayer.getClan(), true);
+        var clan = clanPlayer.getClan();
+        var storage = plugin.getStorageManager();
+
+        if (event.getInventory().getHolder() instanceof ClanChest) {
+            boolean success = storage.runWithTransaction(() -> storage.unlockChest(clan.getTag(), clanPlayer.getUniqueId()));
+            if (success) {
+                storage.updateClan(clan, true);
+            }
         }
     }
 }

@@ -2,12 +2,16 @@ package net.sacredlabyrinth.phaed.simpleclans.managers;
 
 import com.google.common.base.Charsets;
 import net.sacredlabyrinth.phaed.simpleclans.*;
+import net.sacredlabyrinth.phaed.simpleclans.chest.ClanChest;
+import net.sacredlabyrinth.phaed.simpleclans.chest.LockResult;
+import net.sacredlabyrinth.phaed.simpleclans.chest.LockStatus;
 import net.sacredlabyrinth.phaed.simpleclans.events.ClanBalanceUpdateEvent;
 import net.sacredlabyrinth.phaed.simpleclans.loggers.BankLogger;
 import net.sacredlabyrinth.phaed.simpleclans.loggers.BankOperator;
 import net.sacredlabyrinth.phaed.simpleclans.storage.DBCore;
 import net.sacredlabyrinth.phaed.simpleclans.storage.MySQLCore;
 import net.sacredlabyrinth.phaed.simpleclans.storage.SQLiteCore;
+import net.sacredlabyrinth.phaed.simpleclans.storage.TransactionRunnable;
 import net.sacredlabyrinth.phaed.simpleclans.utils.ChatUtils;
 import net.sacredlabyrinth.phaed.simpleclans.utils.YAMLSerializer;
 import net.sacredlabyrinth.phaed.simpleclans.uuid.UUIDFetcher;
@@ -148,6 +152,20 @@ public final class StorageManager {
                             + " `created_at` datetime NULL,"
                     		+ " PRIMARY KEY  (`kill_id`));";
                     core.execute(query);
+                }
+
+                if (!core.existsTable(getPrefixedTable("chest_locks"))) {
+                    String sql = "CREATE TABLE IF NOT EXISTS `" + getPrefixedTable("chest_locks") + "` ("
+                            + " `id` bigint(20) NOT NULL AUTO_INCREMENT,"
+                            + " `clan_tag` varchar(64) NOT NULL,"
+                            + " `server_name` varchar(64) NOT NULL,"
+                            + " `locked_by` varchar(36) NOT NULL,"
+                            + " `lock_time` timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,"
+                            + " PRIMARY KEY (`id`),"
+                            + " INDEX idx_server_name (`server_name`)"
+                            + ");";
+
+                    core.execute(sql);
                 }
             } else {
                 plugin.getServer().getConsoleSender().sendMessage("[SimpleClans] " + ChatColor.RED + lang("mysql.connection.failed"));
@@ -690,30 +708,12 @@ public final class StorageManager {
     public void insertClan(Clan clan) {
         plugin.getProxyManager().sendUpdate(clan);
 
-        String query = "INSERT INTO `" + getPrefixedTable("clans") + "` (`banner`, `ranks`, `description`, `fee_enabled`, `fee_value`, `verified`, `tag`," +
-                " `color_tag`, `name`, `friendly_fire`, `founded`, `last_used`, `packed_allies`, `packed_rivals`, " +
-                "`packed_bb`, `cape_url`, `flags`, `chest_content`, `balance`) ";
-        String values = "VALUES ( '"
-                                    + Helper.escapeQuotes(YAMLSerializer.serialize(clan.getBanner())) + "','"
-        							+ Helper.escapeQuotes(Helper.ranksToJson(clan.getRanks(), clan.getDefaultRank())) + "','"
-        							+ Helper.escapeQuotes(clan.getDescription())+ "',"
-        							+ (clan.isMemberFeeEnabled() ? 1 : 0) +","
-        							+ Helper.escapeQuotes(String.valueOf(clan.getMemberFee())) + ","
-        							+ (clan.isVerified() ? 1 : 0) + ",'"
-        							+ Helper.escapeQuotes(clan.getTag()) + "','"
-        							+ Helper.escapeQuotes(clan.getColorTag()) + "','"
-        							+ Helper.escapeQuotes(clan.getName()) + "',"
-        							+ (clan.isFriendlyFire() ? 1 : 0) + ",'"
-        							+ clan.getFounded() + "','"
-        							+ clan.getLastUsed() + "','"
-        							+ Helper.escapeQuotes(clan.getPackedAllies()) + "','"
-        							+ Helper.escapeQuotes(clan.getPackedRivals()) + "','"
-        							+ Helper.escapeQuotes(clan.getPackedBb()) + "','"
-        							+ Helper.escapeQuotes(clan.getCapeUrl()) + "','"
-        							+ Helper.escapeQuotes(clan.getFlags()) + "','"
-                                    + Helper.escapeQuotes(Arrays.toString(clan.getClanChest().serialize())) + "','"
-        							+ Helper.escapeQuotes(String.valueOf(clan.getBalance())) + "');";
-        core.executeUpdate(query + values);
+        try (PreparedStatement st = prepareUpsertClanStatement(core.getConnection())) {
+            setValues(st, clan);
+            st.executeUpdate();
+        } catch (SQLException | IOException ex) {
+            plugin.getLogger().log(Level.SEVERE, String.format("Error inserting Clan %s", clan.getTag()), ex);
+        }
     }
 
     /**
@@ -778,7 +778,7 @@ public final class StorageManager {
             modifiedClans.add(clan);
             return;
         }
-        try (PreparedStatement st = prepareUpdateClanStatement(core.getConnection())) {
+        try (PreparedStatement st = prepareUpsertClanStatement(core.getConnection())) {
             setValues(st, clan);
             st.executeUpdate();
         } catch (SQLException | IOException ex) {
@@ -786,33 +786,43 @@ public final class StorageManager {
         }
     }
 
-    private PreparedStatement prepareUpdateClanStatement(Connection connection) throws SQLException {
-        String sql = "UPDATE `" + getPrefixedTable("clans") + "` SET ranks = ?, banner = ?, description = ?, fee_enabled = ?, fee_value = ?, " +
-                "verified = ?, tag = ?, color_tag = ?, `name` = ?, friendly_fire = ?, founded = ?, last_used = ?, " +
-                "packed_allies = ?, packed_rivals = ?, packed_bb = ?, balance = ?, flags = ?, chest_content = ? WHERE tag = ?;";
+    private PreparedStatement prepareUpsertClanStatement(Connection connection) throws SQLException {
+        String sql = "INSERT INTO " + getPrefixedTable("clans") +
+                " (`banner`, `ranks`, `description`, `fee_enabled`, `fee_value`, `verified`, `tag`, " +
+                "`color_tag`, `name`, `friendly_fire`, `founded`, `last_used`, `packed_allies`, `packed_rivals`, " +
+                "`packed_bb`, `cape_url`, `flags`, `chest_content`, `balance`) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
+                "ON DUPLICATE KEY UPDATE " +
+                "ranks = VALUES(ranks), banner = VALUES(banner), description = VALUES(description), " +
+                "fee_enabled = VALUES(fee_enabled), fee_value = VALUES(fee_value), verified = VALUES(verified), " +
+                "color_tag = VALUES(color_tag), name = VALUES(name), friendly_fire = VALUES(friendly_fire), " +
+                "founded = VALUES(founded), last_used = VALUES(last_used), packed_allies = VALUES(packed_allies), " +
+                "packed_rivals = VALUES(packed_rivals), packed_bb = VALUES(packed_bb), cape_url = VALUES(cape_url), " +
+                "balance = VALUES(balance), flags = VALUES(flags), chest_content = VALUES(chest_content)";
+
         return connection.prepareStatement(sql);
     }
 
     private void setValues(PreparedStatement statement, Clan clan) throws SQLException, IOException {
-        statement.setString(1, Helper.ranksToJson(clan.getRanks(), clan.getDefaultRank()));
-        statement.setString(2, YAMLSerializer.serialize(clan.getBanner()));
-        statement.setString(3, clan.getDescription());
+        statement.setString(1, Helper.escapeQuotes(YAMLSerializer.serialize(clan.getBanner())));
+        statement.setString(2, Helper.escapeQuotes(Helper.ranksToJson(clan.getRanks(), clan.getDefaultRank())));
+        statement.setString(3, Helper.escapeQuotes(clan.getDescription()));
         statement.setInt(4, clan.isMemberFeeEnabled() ? 1 : 0);
         statement.setDouble(5, clan.getMemberFee());
         statement.setInt(6, clan.isVerified() ? 1 : 0);
-        statement.setString(7, clan.getTag());
-        statement.setString(8, clan.getColorTag());
-        statement.setString(9, clan.getName());
+        statement.setString(7, Helper.escapeQuotes(clan.getTag()));
+        statement.setString(8, Helper.escapeQuotes(clan.getColorTag()));
+        statement.setString(9, Helper.escapeQuotes(clan.getName()));
         statement.setInt(10, clan.isFriendlyFire() ? 1 : 0);
         statement.setLong(11, clan.getFounded());
         statement.setLong(12, clan.getLastUsed());
-        statement.setString(13, clan.getPackedAllies());
-        statement.setString(14, clan.getPackedRivals());
-        statement.setString(15, clan.getPackedBb());
-        statement.setDouble(16, clan.getBalance());
-        statement.setString(17, clan.getFlags());
+        statement.setString(13, Helper.escapeQuotes(clan.getPackedAllies()));
+        statement.setString(14, Helper.escapeQuotes(clan.getPackedRivals()));
+        statement.setString(15, Helper.escapeQuotes(clan.getPackedBb()));
+        statement.setString(16, Helper.escapeQuotes(clan.getCapeUrl()));
+        statement.setString(17, Helper.escapeQuotes(clan.getFlags()));
         statement.setBytes(18, clan.getClanChest().serialize());
-        statement.setString(19, clan.getTag());
+        statement.setDouble(19, clan.getBalance());
     }
 
     /**
@@ -1261,7 +1271,7 @@ public final class StorageManager {
         } catch (SQLException ex) {
             plugin.getLogger().log(Level.SEVERE, "Error saving modified ClanPlayers:", ex);
         }
-        try (PreparedStatement pst = prepareUpdateClanStatement(core.getConnection())) {
+        try (PreparedStatement pst = prepareUpsertClanStatement(core.getConnection())) {
             //removing disbanded clans
             modifiedClans.retainAll(plugin.getClanManager().getClans());
             for (Clan clan : modifiedClans) {
@@ -1274,5 +1284,86 @@ public final class StorageManager {
         } catch (SQLException | IOException ex) {
             plugin.getLogger().log(Level.SEVERE, "Error saving modified Clans:", ex);
         }
+    }
+
+    public LockResult checkChestLock(String serverName, String clanTag) throws SQLException {
+        PreparedStatement pst = prepareSelectChestLockStatement(core.getConnection());
+        pst.setString(1, clanTag);
+        ResultSet rs = pst.executeQuery();
+
+        if (rs.next()) {
+            String lockedServer = rs.getString("server_name");
+            UUID lockedBy = UUID.fromString(rs.getString("locked_by"));
+
+            if (!lockedServer.equals(serverName)) {
+                return new LockResult(LockStatus.LOCKED_BY_OTHER_SERVER, lockedBy, lockedServer);
+            }
+        }
+
+        return new LockResult(LockStatus.NOT_LOCKED);
+    }
+
+    public boolean lockChest(String serverName, String clanTag, UUID playerUuid) throws SQLException {
+        PreparedStatement pst = prepareInsertChestLockStatement(core.getConnection());
+        pst.setString(1, clanTag);
+        pst.setString(2, serverName);
+        pst.setString(3, playerUuid.toString());
+        return pst.executeUpdate() > 0;
+    }
+
+    public void unlockChest(String clanTag, UUID playerUuid) throws SQLException {
+        PreparedStatement pst = prepareDeleteChestLockStatement(core.getConnection());
+        pst.setString(1, clanTag);
+        pst.setString(2, playerUuid.toString());
+        pst.executeUpdate();
+    }
+
+    public boolean runWithTransaction(TransactionRunnable action) {
+        Connection conn = null;
+        try {
+            conn = core.getConnection();
+
+            if (conn.isClosed()) {
+                return true;
+            }
+
+            conn.setAutoCommit(false);
+            try {
+                action.run();
+                conn.commit();
+                return true;
+            } catch (SQLException ex) {
+                conn.rollback();
+                throw ex;
+            }
+        } catch (SQLException e) {
+            try {
+                // Ensure connection is returned to the pool (if using a connection pool)
+                if (!conn.isClosed()) {
+                    conn.setAutoCommit(true); // Reset auto-commit to the default state
+                    conn.close();
+                }
+            } catch (SQLException ex) {
+                plugin.getLogger().log(Level.SEVERE, "Error closing connection", ex);
+                return false;
+            }
+
+            return true;
+        }
+    }
+
+    private PreparedStatement prepareSelectChestLockStatement(Connection connection) throws SQLException {
+        String sql = "SELECT server_name, locked_by FROM " + getPrefixedTable("chest_locks") + " WHERE clan_tag = ? FOR UPDATE";
+        return connection.prepareStatement(sql);
+    }
+
+    private PreparedStatement prepareDeleteChestLockStatement(Connection connection) throws SQLException {
+        String sql = "DELETE FROM " + getPrefixedTable("chest_locks") + " WHERE clan_tag = ? AND locked_by = ?";
+        return connection.prepareStatement(sql);
+    }
+
+    private PreparedStatement prepareInsertChestLockStatement(Connection connection) throws SQLException {
+        String sql = "INSERT INTO " + getPrefixedTable("chest_locks") + " (clan_tag, server_name, locked_by) VALUES (?, ?, ?)";
+        return connection.prepareStatement(sql);
     }
 }

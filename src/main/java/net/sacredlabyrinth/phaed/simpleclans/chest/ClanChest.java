@@ -1,5 +1,6 @@
-package net.sacredlabyrinth.phaed.simpleclans;
+package net.sacredlabyrinth.phaed.simpleclans.chest;
 
+import net.sacredlabyrinth.phaed.simpleclans.SimpleClans;
 import org.bukkit.Bukkit;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.InventoryHolder;
@@ -22,8 +23,6 @@ public class ClanChest implements Serializable, InventoryHolder {
 
     private transient @Nullable Inventory chest;
 
-    private transient String serverUsing;
-
     @Override
     public @NotNull Inventory getInventory() {
         if (chest == null) {
@@ -31,24 +30,6 @@ public class ClanChest implements Serializable, InventoryHolder {
         }
 
         return chest;
-    }
-
-    public String getServerUsing() {
-        return serverUsing;
-    }
-
-    public void useServer(@NotNull String server) {
-        if (serverUsing == null) {
-            this.serverUsing = server;
-        }
-    }
-
-    public void releaseServer() {
-        this.serverUsing = null;
-    }
-
-    public boolean canUseCurrentServer() {
-        return serverUsing == null || serverUsing.equals(SimpleClans.getInstance().getProxyManager().getServerName());
     }
 
     public byte[] serialize() {

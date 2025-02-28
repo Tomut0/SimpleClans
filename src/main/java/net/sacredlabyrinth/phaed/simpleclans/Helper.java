@@ -5,9 +5,11 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import net.sacredlabyrinth.phaed.simpleclans.managers.PermissionsManager;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.Contract;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -25,6 +27,7 @@ import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.Map.Entry;
+import java.util.concurrent.*;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
@@ -41,6 +44,7 @@ public final class Helper {
     private static final Gson GSON = new Gson();
     private static final Type RANKS_TYPE = TypeToken.getParameterized(List.class, Rank.class).getType();
     private static final Type RESIGN_TYPE = TypeToken.getParameterized(Map.class, String.class, Long.class).getType();
+
     private Helper() {
     }
 
@@ -385,5 +389,31 @@ public final class Helper {
             statuses.add(lang("unverified", sender));
         }
         return String.join(", ", statuses);
+    }
+
+    public static class Debouncer {
+        private static final ConcurrentHashMap<Object, BukkitTask> delayedMap = new ConcurrentHashMap<>();
+
+        /**
+         * Debounces {@code runnable} by {@code delay}, i.e., schedules it to be executed after {@code delay},
+         * or cancels its execution if the method is called with the same key within {@code delay} again.
+         */
+        public static void debounce(Object key, Runnable runnable, long delay, TimeUnit unit) {
+            // Convert delay to ticks (1 second = 20 ticks in Minecraft)
+            long delayInTicks = unit.toMillis(delay) / 50;
+
+            // Cancel previous task if any
+            BukkitTask prev = delayedMap.put(key, Bukkit.getScheduler().runTaskLater(SimpleClans.getInstance(), () -> {
+                try {
+                    runnable.run();
+                } finally {
+                    delayedMap.remove(key);
+                }
+            }, delayInTicks));
+
+            if (prev != null) {
+                prev.cancel();
+            }
+        }
     }
 }
