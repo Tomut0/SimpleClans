@@ -241,6 +241,21 @@ public final class StorageManager {
                             + " PRIMARY KEY  (`kill_id`));";
                     core.execute(query);
                 }
+
+                if (!core.existsTable(getPrefixedTable("chest_locks"))) {
+                    String sql = "CREATE TABLE IF NOT EXISTS `" + getPrefixedTable("chest_locks") + "` ("
+                            + " `id` integer primary key autoincrement,"
+                            + " `clan_tag` text not null,"
+                            + " `server_name` text not null,"
+                            + " `locked_by` text not null,"
+                            + " `lock_time` datetime default current_timestamp"
+                            + ");";
+
+                    core.execute(sql);
+
+                    String indexSql = "CREATE INDEX IF NOT EXISTS idx_server_name ON `" + getPrefixedTable("chest_locks") + "` (`server_name`);";
+                    core.execute(indexSql);
+                }
             } else {
                 plugin.getServer().getConsoleSender().sendMessage("[SimpleClans] " + ChatColor.RED + lang("sqlite.connection.failed"));
             }
