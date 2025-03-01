@@ -44,6 +44,8 @@ public final class Helper {
     private static final Gson GSON = new Gson();
     private static final Type RANKS_TYPE = TypeToken.getParameterized(List.class, Rank.class).getType();
     private static final Type RESIGN_TYPE = TypeToken.getParameterized(Map.class, String.class, Long.class).getType();
+    private static final Map<String, Long> LAST_EXECUTION_TIME = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, BukkitTask> DELAYED_MAP = new ConcurrentHashMap<>();
 
     private Helper() {
     }
@@ -391,29 +393,49 @@ public final class Helper {
         return String.join(", ", statuses);
     }
 
-    public static class Debouncer {
-        private static final ConcurrentHashMap<Object, BukkitTask> delayedMap = new ConcurrentHashMap<>();
+    /**
+     * Throttles execution of a runnable to occur at most once per specified rate.
+     * If the function is called multiple times within the rate period, only the first call executes.
+     *
+     * @param key      A unique identifier for this throttle operation
+     * @param runnable The operation to execute
+     * @param rate     The rate at which to throttle (minimum time between executions)
+     * @param timeUnit The time unit of the rate parameter
+     */
+    public static void throttle(String key, Runnable runnable, long rate, TimeUnit timeUnit) {
+        // Convert the rate to milliseconds
+        long rateInMillis = timeUnit.toMillis(rate);
+        long currentTime = System.currentTimeMillis();
+        Long lastExecution = LAST_EXECUTION_TIME.get(key);
 
-        /**
-         * Debounces {@code runnable} by {@code delay}, i.e., schedules it to be executed after {@code delay},
-         * or cancels its execution if the method is called with the same key within {@code delay} again.
-         */
-        public static void debounce(Object key, Runnable runnable, long delay, TimeUnit unit) {
-            // Convert delay to ticks (1 second = 20 ticks in Minecraft)
-            long delayInTicks = unit.toMillis(delay) / 50;
+        // If it's the first execution or enough time has elapsed since last execution
+        if (lastExecution == null || currentTime - lastExecution >= rateInMillis) {
+            LAST_EXECUTION_TIME.put(key, currentTime);
 
-            // Cancel previous task if any
-            BukkitTask prev = delayedMap.put(key, Bukkit.getScheduler().runTaskLater(SimpleClans.getInstance(), () -> {
-                try {
-                    runnable.run();
-                } finally {
-                    delayedMap.remove(key);
-                }
-            }, delayInTicks));
+            // Execute the operation
+            Bukkit.getScheduler().runTaskAsynchronously(SimpleClans.getInstance(), runnable);
+        }
+    }
 
-            if (prev != null) {
-                prev.cancel();
+    /**
+     * Debounces {@code runnable} by {@code delay}, i.e., schedules it to be executed after {@code delay},
+     * or cancels its execution if the method is called with the same key within {@code delay} again.
+     */
+    public static void debounce(String key, Runnable runnable, long delay, TimeUnit unit) {
+        // Convert delay to ticks (1 second = 20 ticks in Minecraft)
+        long delayInTicks = unit.toMillis(delay) / 50;
+
+        // Cancel previous task if any
+        BukkitTask prev = DELAYED_MAP.put(key, Bukkit.getScheduler().runTaskLaterAsynchronously(SimpleClans.getInstance(), () -> {
+            try {
+                runnable.run();
+            } finally {
+                DELAYED_MAP.remove(key);
             }
+        }, delayInTicks));
+
+        if (prev != null) {
+            prev.cancel();
         }
     }
 }

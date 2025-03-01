@@ -13,6 +13,7 @@ import net.sacredlabyrinth.phaed.simpleclans.events.TagChangeEvent;
 import net.sacredlabyrinth.phaed.simpleclans.managers.*;
 import net.sacredlabyrinth.phaed.simpleclans.utils.ChatUtils;
 import net.sacredlabyrinth.phaed.simpleclans.utils.CurrencyFormat;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.Nullable;
@@ -404,14 +405,14 @@ public class ClanCommands extends BaseCommand {
             return;
         }
 
-        String debounceKey = player.getName() + "_chest_opening";
-        Helper.Debouncer.debounce(debounceKey, () -> {
+        var throttleKey = player.getName() + "_opening_chest";
+        Helper.throttle(throttleKey, () -> {
             String serverName = plugin.getProxyManager().getServerName();
             if (serverName == null || serverName.isEmpty()) {
                 throw new IllegalStateException("Server name is empty");
             }
 
-            boolean success = storage.runWithTransaction(() -> {
+            storage.runWithTransaction(() -> {
                 LockResult lockResult = storage.checkChestLock(serverName, clan.getTag());
                 if (lockResult.getStatus() != LockStatus.NOT_LOCKED) {
                     @Nullable ClanPlayer cp = cm.getAnyClanPlayer(lockResult.getLockedBy());
@@ -423,13 +424,10 @@ public class ClanCommands extends BaseCommand {
 
                 boolean lockSuccess = storage.lockChest(serverName, clan.getTag(), UUID.fromString(player.getUniqueId().toString()));
                 if (lockSuccess) {
-                    player.openInventory(clanChest.getInventory());
+                    // inventory must be opened in the main thread
+                    Bukkit.getScheduler().runTask(plugin, () -> player.openInventory(clanChest.getInventory()));
                 }
             });
-
-            if (!success) {
-                ChatBlock.sendMessageKey(player, "clan.chest.cant.be.opened");
-            }
-        }, 500L, TimeUnit.MILLISECONDS);
+        }, 1L, TimeUnit.SECONDS);
     }
 }
