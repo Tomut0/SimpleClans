@@ -22,7 +22,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 import static net.sacredlabyrinth.phaed.simpleclans.SimpleClans.lang;
 import static net.sacredlabyrinth.phaed.simpleclans.managers.SettingsManager.ConfigField.*;
@@ -405,33 +404,30 @@ public class ClanCommands extends BaseCommand {
             return;
         }
 
-        var throttleKey = player.getName() + "_opening_chest";
-        Helper.throttle(throttleKey, () -> {
-            String serverName = plugin.getProxyManager().getServerName();
-            if (serverName == null || serverName.isEmpty()) {
-                throw new IllegalStateException("Server name is empty");
+        String serverName = plugin.getProxyManager().getServerName();
+        if (serverName == null || serverName.isEmpty()) {
+            throw new IllegalStateException("Server name is empty");
+        }
+
+        var success = storage.runWithTransaction(() -> {
+            LockResult lockResult = storage.checkChestLock(serverName, clan.getTag());
+            if (lockResult.getStatus() != LockStatus.NOT_LOCKED) {
+                @Nullable ClanPlayer cp = cm.getAnyClanPlayer(lockResult.getLockedBy());
+                String name = cp == null ? lang("player") : cp.getName();
+
+                ChatBlock.sendMessageKey(player, "clan.chest.is.locked", name, lockResult.getServerName());
+                return;
             }
 
-            var success = storage.runWithTransaction(() -> {
-                LockResult lockResult = storage.checkChestLock(serverName, clan.getTag());
-                if (lockResult.getStatus() != LockStatus.NOT_LOCKED) {
-                    @Nullable ClanPlayer cp = cm.getAnyClanPlayer(lockResult.getLockedBy());
-                    String name = cp == null ? lang("player") : cp.getName();
-
-                    ChatBlock.sendMessageKey(player, "clan.chest.is.locked", name, lockResult.getServerName());
-                    return;
-                }
-
-                boolean lockSuccess = storage.lockChest(serverName, clan.getTag(), UUID.fromString(player.getUniqueId().toString()));
-                if (lockSuccess) {
-                    // inventory must be opened in the main thread
-                    Bukkit.getScheduler().runTask(plugin, () -> player.openInventory(clanChest.getInventory()));
-                }
-            });
-
-            if (!success) {
-                ChatBlock.sendMessageKey(player, "clan.chest.cant.be.opened");
+            boolean lockSuccess = storage.lockChest(serverName, clan.getTag(), UUID.fromString(player.getUniqueId().toString()));
+            if (lockSuccess) {
+                // inventory must be opened in the main thread
+                Bukkit.getScheduler().runTask(plugin, () -> player.openInventory(clanChest.getInventory()));
             }
-        }, 1L, TimeUnit.SECONDS);
+        });
+
+        if (!success) {
+            ChatBlock.sendMessageKey(player, "clan.chest.cant.be.opened");
+        }
     }
 }
