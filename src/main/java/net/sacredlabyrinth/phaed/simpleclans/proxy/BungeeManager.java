@@ -9,6 +9,7 @@ import net.sacredlabyrinth.phaed.simpleclans.Clan;
 import net.sacredlabyrinth.phaed.simpleclans.ClanPlayer;
 import net.sacredlabyrinth.phaed.simpleclans.SimpleClans;
 import net.sacredlabyrinth.phaed.simpleclans.chat.SCMessage;
+import net.sacredlabyrinth.phaed.simpleclans.chest.ClanChest;
 import net.sacredlabyrinth.phaed.simpleclans.managers.SettingsManager.ConfigField;
 import net.sacredlabyrinth.phaed.simpleclans.proxy.adapters.*;
 import net.sacredlabyrinth.phaed.simpleclans.proxy.listeners.MessageListener;
@@ -43,6 +44,7 @@ public final class BungeeManager implements ProxyManager, PluginMessageListener 
                 .registerTypeAdapterFactory(new ConfigurationSerializableAdapter())
                 .registerTypeAdapter(ClanPlayerListAdapter.getType(), new ClanPlayerListAdapter(plugin))
                 .registerTypeAdapter(SCMessage.class, new SCMessageAdapter(plugin))
+                .registerTypeAdapter(ClanChest.class, new ClanChestAdapter(plugin))
                 .setExclusionStrategies()
                 .create();
         if (!plugin.getSettingsManager().is(ConfigField.PERFORMANCE_USE_BUNGEECORD)) {

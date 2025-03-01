@@ -12,9 +12,15 @@ import java.io.IOException;
 
 public class ClanChestAdapter extends TypeAdapter<ClanChest> {
 
+    private final SimpleClans plugin;
+
+    public ClanChestAdapter(SimpleClans plugin) {
+        this.plugin = plugin;
+    }
+
     @Override
     public void write(JsonWriter out, ClanChest clanChest) throws IOException {
-        Gson gson = SimpleClans.getInstance().getProxyManager().getGson();
+        Gson gson = plugin.getProxyManager().getGson();
         out.beginObject();
 
         out.name("content");
@@ -26,7 +32,7 @@ public class ClanChestAdapter extends TypeAdapter<ClanChest> {
 
     @Override
     public ClanChest read(JsonReader in) throws IOException {
-        Gson gson = SimpleClans.getInstance().getProxyManager().getGson();
+        Gson gson = plugin.getProxyManager().getGson();
         in.beginObject();
 
         ItemStack[] items = null;
