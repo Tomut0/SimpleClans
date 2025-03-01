@@ -412,7 +412,7 @@ public class ClanCommands extends BaseCommand {
                 throw new IllegalStateException("Server name is empty");
             }
 
-            storage.runWithTransaction(() -> {
+            var success = storage.runWithTransaction(() -> {
                 LockResult lockResult = storage.checkChestLock(serverName, clan.getTag());
                 if (lockResult.getStatus() != LockStatus.NOT_LOCKED) {
                     @Nullable ClanPlayer cp = cm.getAnyClanPlayer(lockResult.getLockedBy());
@@ -428,6 +428,10 @@ public class ClanCommands extends BaseCommand {
                     Bukkit.getScheduler().runTask(plugin, () -> player.openInventory(clanChest.getInventory()));
                 }
             });
+
+            if (!success) {
+                ChatBlock.sendMessageKey(player, "clan.chest.cant.be.opened");
+            }
         }, 1L, TimeUnit.SECONDS);
     }
 }
