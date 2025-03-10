@@ -42,10 +42,10 @@ public final class BungeeManager implements ProxyManager, PluginMessageListener 
 
     public BungeeManager(SimpleClans plugin) {
         this.plugin = plugin;
-        gson = new GsonBuilder().registerTypeAdapterFactory(new ClanPlayerTypeAdapterFactory(plugin))
+        gson = new GsonBuilder().registerTypeAdapterFactory(new ClanPlayerTypeAdapterFactory(plugin.getClanManager()))
                 .registerTypeAdapterFactory(new ConfigurationSerializableAdapter())
-                .registerTypeAdapter(ClanPlayerListAdapter.getType(), new ClanPlayerListAdapter(plugin))
-                .registerTypeAdapter(SCMessage.class, new SCMessageAdapter(plugin)).setExclusionStrategies()
+                .registerTypeAdapter(ClanPlayerListAdapter.getType(), new ClanPlayerListAdapter(plugin.getClanManager()))
+                .registerTypeAdapter(SCMessage.class, new SCMessageAdapter(plugin.getClanManager())).setExclusionStrategies()
                 .create();
         if (!plugin.getSettingsManager().is(ConfigField.PERFORMANCE_USE_BUNGEECORD)) {
             return;

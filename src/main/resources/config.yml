@@ -250,8 +250,18 @@ permissions:
   auto-group-groupname: false
   YourClanNameHere:
   - test.permission
+message-broker:
+    publisher-name: "lobby"
+    subscribers: []
+plugin-messaging:
+    enable: false
+redis:
+    enable: false
+    host: localhost
+    port: 6379
+    username: ''
+    password: ''
 performance:
   save-periodically: true
   save-interval: 10
   use-threads: true
-  use-bungeecord: false

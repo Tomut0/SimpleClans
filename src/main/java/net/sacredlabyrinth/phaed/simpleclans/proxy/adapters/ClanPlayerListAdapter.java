@@ -7,6 +7,7 @@ import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import net.sacredlabyrinth.phaed.simpleclans.ClanPlayer;
 import net.sacredlabyrinth.phaed.simpleclans.SimpleClans;
+import net.sacredlabyrinth.phaed.simpleclans.managers.ClanManager;
 
 import java.io.IOException;
 import java.lang.reflect.Type;
@@ -15,10 +16,19 @@ import java.util.List;
 import java.util.UUID;
 
 public class ClanPlayerListAdapter extends TypeAdapter<List<ClanPlayer>> {
-    private final SimpleClans plugin;
+    private final ClanManager clanManager;
 
+    @Deprecated
+    private SimpleClans plugin;
+
+    @Deprecated
     public ClanPlayerListAdapter(SimpleClans plugin) {
         this.plugin = plugin;
+        clanManager = plugin.getClanManager();
+    }
+
+    public ClanPlayerListAdapter(ClanManager clanManager) {
+        this.clanManager = clanManager;
     }
 
     @Override
@@ -41,7 +51,7 @@ public class ClanPlayerListAdapter extends TypeAdapter<List<ClanPlayer>> {
             in.beginObject();
             in.nextName();
             UUID uuid = UUID.fromString(in.nextString());
-            ClanPlayer cp = plugin.getClanManager().getAnyClanPlayer(uuid);
+            ClanPlayer cp = clanManager.getAnyClanPlayer(uuid);
             in.endObject();
             if (cp != null) {
                 list.add(cp);

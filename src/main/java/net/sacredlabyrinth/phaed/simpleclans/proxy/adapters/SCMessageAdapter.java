@@ -7,6 +7,7 @@ import net.sacredlabyrinth.phaed.simpleclans.ClanPlayer;
 import net.sacredlabyrinth.phaed.simpleclans.SimpleClans;
 import net.sacredlabyrinth.phaed.simpleclans.chat.SCMessage;
 import net.sacredlabyrinth.phaed.simpleclans.chat.SCMessage.Source;
+import net.sacredlabyrinth.phaed.simpleclans.managers.ClanManager;
 import org.jetbrains.annotations.Nullable;
 
 import java.io.IOException;
@@ -14,10 +15,19 @@ import java.util.UUID;
 
 public class SCMessageAdapter extends TypeAdapter<SCMessage> {
 
-    private final SimpleClans plugin;
+    private final ClanManager clanManager;
+    
+    @Deprecated
+    private SimpleClans plugin;
 
+    @Deprecated
     public SCMessageAdapter(SimpleClans plugin) {
         this.plugin = plugin;
+        clanManager = plugin.getClanManager();
+    }
+
+    public SCMessageAdapter(ClanManager clanManager) {
+        this.clanManager = clanManager;
     }
 
     @Override
@@ -39,7 +49,7 @@ public class SCMessageAdapter extends TypeAdapter<SCMessage> {
         ClanPlayer.Channel channel = ClanPlayer.Channel.valueOf(in.nextString());
         in.nextName();
         UUID uuid = UUID.fromString(in.nextString());
-        ClanPlayer sender = plugin.getClanManager().getAnyClanPlayer(uuid);
+        ClanPlayer sender = clanManager.getAnyClanPlayer(uuid);
         in.nextName();
         String content = in.nextString();
         in.endObject();

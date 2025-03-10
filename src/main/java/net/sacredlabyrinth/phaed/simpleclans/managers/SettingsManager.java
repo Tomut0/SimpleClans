@@ -3,6 +3,7 @@ package net.sacredlabyrinth.phaed.simpleclans.managers;
 import com.cryptomorin.xseries.XMaterial;
 import net.sacredlabyrinth.phaed.simpleclans.Rank;
 import net.sacredlabyrinth.phaed.simpleclans.SimpleClans;
+import net.sacredlabyrinth.phaed.simpleclans.proxy.BrokerType;
 import net.sacredlabyrinth.phaed.simpleclans.utils.ChatUtils;
 import org.bukkit.Material;
 import org.bukkit.configuration.InvalidConfigurationException;
@@ -262,6 +263,17 @@ public final class SettingsManager {
             }
         }
         return ranks;
+    }
+
+    public BrokerType getBrokerType() {
+        for (BrokerType type : BrokerType.values()) {
+            String enabledPath = type.getDisplayName() + ".enable";
+            if (config.getBoolean(enabledPath)) {
+                return type;
+            }
+        }
+
+        return BrokerType.PLUGIN_MESSAGING;
     }
 
     public FileConfiguration getConfig() {
@@ -583,6 +595,19 @@ public final class SettingsManager {
         ================
          */
         PERMISSIONS_AUTO_GROUP_GROUPNAME("permissions.auto-group-groupname", false),
+        /*
+        ================
+        > Message Broker Settings
+        ================
+        */
+        MESSAGE_BROKER_PUBLISHER_NAME("message-broker.publisher-name"),
+        MESSAGE_BROKER_SUBSCRIBERS("message-broker.publisher-name"),
+        PLUGIN_MESSAGING_ENABLE("plugin-messaging.enable", false),
+        REDIS_ENABLE("redis.enable", false),
+        REDIS_HOST("redis.host", "localhost"),
+        REDIS_PORT("redis.port", 6379),
+        REDIS_USERNAME("redis.username", ""),
+        REDIS_PASSWORD("redis.password", ""),
         /*
         ================
         > Performance Settings

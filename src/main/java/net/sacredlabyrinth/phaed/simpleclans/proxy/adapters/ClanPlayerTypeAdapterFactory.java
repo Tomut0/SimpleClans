@@ -10,14 +10,24 @@ import com.google.gson.stream.JsonWriter;
 import net.sacredlabyrinth.phaed.simpleclans.Clan;
 import net.sacredlabyrinth.phaed.simpleclans.ClanPlayer;
 import net.sacredlabyrinth.phaed.simpleclans.SimpleClans;
+import net.sacredlabyrinth.phaed.simpleclans.managers.ClanManager;
 import org.jetbrains.annotations.Nullable;
 
 public class ClanPlayerTypeAdapterFactory implements TypeAdapterFactory {
 
-    private final SimpleClans plugin;
+    @Deprecated
+    private SimpleClans plugin;
 
-    public ClanPlayerTypeAdapterFactory(SimpleClans plugin) {
+    private final ClanManager clanManager;
+
+    @Deprecated
+    public ClanPlayerTypeAdapterFactory(SimpleClans plugin, ClanManager clanManager) {
         this.plugin = plugin;
+        this.clanManager = plugin.getClanManager();
+    }
+
+    public ClanPlayerTypeAdapterFactory(ClanManager clanManager) {
+        this.clanManager = clanManager;
     }
 
     @SuppressWarnings("unchecked")
@@ -40,7 +50,7 @@ public class ClanPlayerTypeAdapterFactory implements TypeAdapterFactory {
             public ClanPlayer read(JsonReader in) {
                 JsonObject object = gson.fromJson(in, JsonObject.class);
                 String tag = object.get("clan").getAsString();
-                Clan clan = plugin.getClanManager().getClan(tag);
+                Clan clan = clanManager.getClan(tag);
                 object.add("clan", null);
 
                 ClanPlayer cp = delegate.fromJsonTree(object);
