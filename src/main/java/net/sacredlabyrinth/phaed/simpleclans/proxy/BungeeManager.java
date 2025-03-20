@@ -276,10 +276,9 @@ public final class BungeeManager implements ProxyManager, PluginMessageListener 
     }
 
     @SuppressWarnings("BooleanMethodIsAlwaysInverted")
-    private boolean isChannelRegistered() {
+    public boolean isChannelRegistered() {
         boolean registered = Bukkit.getMessenger().isOutgoingChannelRegistered(plugin, "BungeeCord");
         SimpleClans.debug(String.format("BungeeCord channel registered: %s", registered));
         return registered;
     }
-
 }

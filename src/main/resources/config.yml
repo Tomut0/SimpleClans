@@ -252,7 +252,7 @@ permissions:
   YourClanNameHere:
   - test.permission
 message-broker:
-    publisher-name: "lobby"
+    publisher-name: "global"
     subscribers: []
 plugin-messaging:
     enable: false

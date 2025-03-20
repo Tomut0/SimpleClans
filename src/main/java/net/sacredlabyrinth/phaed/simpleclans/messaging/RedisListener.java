@@ -1,4 +1,4 @@
-package net.sacredlabyrinth.phaed.simpleclans.proxy;
+package net.sacredlabyrinth.phaed.simpleclans.messaging;
 
 import redis.clients.jedis.JedisPubSub;
 

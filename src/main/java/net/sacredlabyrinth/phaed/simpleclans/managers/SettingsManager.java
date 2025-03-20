@@ -3,7 +3,7 @@ package net.sacredlabyrinth.phaed.simpleclans.managers;
 import com.cryptomorin.xseries.XMaterial;
 import net.sacredlabyrinth.phaed.simpleclans.Rank;
 import net.sacredlabyrinth.phaed.simpleclans.SimpleClans;
-import net.sacredlabyrinth.phaed.simpleclans.proxy.BrokerType;
+import net.sacredlabyrinth.phaed.simpleclans.messaging.BrokerType;
 import net.sacredlabyrinth.phaed.simpleclans.utils.ChatUtils;
 import org.bukkit.Material;
 import org.bukkit.configuration.InvalidConfigurationException;

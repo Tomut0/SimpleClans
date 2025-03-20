@@ -1,4 +1,4 @@
-package net.sacredlabyrinth.phaed.simpleclans.proxy;
+package net.sacredlabyrinth.phaed.simpleclans.messaging;
 
 public enum BrokerType {
     REDIS("redis"),
